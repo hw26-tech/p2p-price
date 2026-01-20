@@ -2,11 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Binance vs Kontigo - Tasa Bs</title>
+  <title>Tasas: Binance vs Kontigo vs BCV</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * { box-sizing: border-box; }
-
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0f172a;
@@ -14,31 +13,16 @@
       margin: 0;
       padding: 20px;
     }
-
-    h1 {
-      text-align: center;
-      margin: 0 0 10px;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #9ca3af;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
+    h1 { text-align: center; margin: 0 0 10px; }
+    .subtitle { text-align: center; color: #9ca3af; font-size: 0.9rem; margin-bottom: 18px; }
+    .container { max-width: 980px; margin: 0 auto; }
 
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
       gap: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
-
     .card {
       background: #111827;
       border-radius: 12px;
@@ -46,157 +30,209 @@
       border: 1px solid #1f2937;
       box-shadow: 0 10px 25px rgba(0,0,0,0.35);
     }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 12px;
-    }
-
-    .card-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
+    .card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    .card-title { font-size: 1.15rem; font-weight: 650; display: flex; align-items: center; gap: 8px; }
     .badge {
       font-size: 0.75rem;
       padding: 3px 10px;
       border-radius: 999px;
       background: #1d4ed8;
       color: #e5e7eb;
+      white-space: nowrap;
     }
+    .badge.green { background: #16a34a; }
+    .badge.purple { background: #6b21a8; }
 
-    .price-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 6px 0;
-      font-size: 1rem;
-    }
+    .price-row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 1rem; }
+    .label { color: #9ca3af; }
+    .value { font-weight: 750; color: #facc15; font-size: 1.1rem; }
 
-    .label {
-      color: #9ca3af;
-    }
-
-    .value {
-      font-weight: 700;
-      color: #facc15;
-      font-size: 1.1rem;
-    }
-
-    .muted {
-      color: #6b7280;
-      font-size: 0.8rem;
-      margin-top: 8px;
-    }
-
-    .status {
-      margin-top: 8px;
-      font-size: 0.8rem;
-    }
-
+    .muted { color: #6b7280; font-size: 0.8rem; margin-top: 8px; }
+    .status { margin-top: 8px; font-size: 0.8rem; }
     .status.ok { color: #22c55e; }
     .status.error { color: #f97316; }
 
-    .footer {
-      text-align: center;
-      font-size: 0.75rem;
-      color: #6b7280;
-      margin-top: 20px;
+    .section {
+      background: #0b1222;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      margin-top: 14px;
+    }
+    .section-title { font-size: 1rem; font-weight: 700; margin: 0 0 12px; }
+
+    .breach-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .breach-number { font-weight: 800; font-size: 1.2rem; color: #facc15; }
+    .breach-pct { font-weight: 700; font-size: 1rem; color: #22c55e; }
+
+    .bar {
+      width: 100%;
+      height: 14px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .bar > .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f97316, #facc15);
+      transition: width 250ms ease;
     }
 
-    .last-update {
-      text-align: center;
-      font-size: 0.85rem;
-      color: #9ca3af;
-      margin-top: 10px;
+    .calc-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 720px) {
+      .calc-grid { grid-template-columns: 200px 1fr 1fr; align-items: end; }
     }
 
-    .highlight {
-      color: #22c55e;
-      font-weight: 500;
+    label { display: block; color: #9ca3af; font-size: 0.85rem; margin-bottom: 6px; font-weight: 500; }
+    select, input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #111827;
+      color: #e5e7eb;
+      outline: none;
+      font-size: 0.95rem;
     }
+    select:focus, input:focus { border-color: #3b82f6; }
+    input:disabled, select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .calc-meta { margin-top: 10px; color: #9ca3af; font-size: 0.85rem; }
+    .last-update { text-align: center; font-size: 0.85rem; color: #9ca3af; margin-top: 14px; }
+    .footer { text-align: center; font-size: 0.75rem; color: #6b7280; margin-top: 16px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>💱 Binance P2P vs Kontigo</h1>
-    <div class="subtitle">
-      Tasas en Bolívares (Bs) · Actualización automática cada 30s
-    </div>
+    <h1>💱 Binance vs Kontigo vs BCV</h1>
+    <div class="subtitle">Tasas en Bolívares (Bs) · Actualización automática cada 30s</div>
 
     <div class="cards">
-      <!-- BINANCE CARD -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">
-            Binance P2P
-            <span class="badge">USDT ↔ VES</span>
-          </div>
+          <div class="card-title">Binance P2P <span class="badge">USDT ↔️ VES</span></div>
         </div>
-        <div class="price-row">
-          <div class="label">Compra:</div>
-          <div id="binance-buy" class="value">Cargando...</div>
-        </div>
-        <div class="price-row">
-          <div class="label">Venta:</div>
-          <div id="binance-sell" class="value">Cargando...</div>
-        </div>
-        <div class="muted">
-          Fuente: Binance P2P API (primer anuncio)
-        </div>
+        <div class="price-row"><div class="label">Compra:</div><div id="binance-buy" class="value">—</div></div>
+        <div class="price-row"><div class="label">Venta:</div><div id="binance-sell" class="value">—</div></div>
+        <div class="muted">Fuente: Binance P2P API (primer anuncio)</div>
         <div id="binance-status" class="status"></div>
       </div>
 
-      <!-- KONTIGO CARD -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">
-            Kontigo
-            <span class="badge" style="background:#16a34a;">Simulado</span>
-          </div>
+          <div class="card-title">Kontigo <span class="badge green">Simulado</span></div>
         </div>
-        <div class="price-row">
-          <div class="label">Compra:</div>
-          <div id="kontigo-buy" class="value">-</div>
-        </div>
-        <div class="price-row">
-          <div class="label">Venta:</div>
-          <div id="kontigo-sell" class="value">-</div>
-        </div>
-        <div class="muted">
-          Basado en BCV + spread. No es tasa oficial de Kontigo.
-        </div>
+        <div class="price-row"><div class="label">Compra:</div><div id="kontigo-buy" class="value">—</div></div>
+        <div class="price-row"><div class="label">Venta:</div><div id="kontigo-sell" class="value">—</div></div>
+        <div class="muted">Basado en Binance (Buy -2%, Sell -10%)</div>
         <div id="kontigo-status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">BCV <span class="badge purple">Oficial</span></div>
+        </div>
+        <div class="price-row"><div class="label">Tasa:</div><div id="bcv-rate" class="value">—</div></div>
+        <div class="muted">Fuente: monitor BCV (pydolarvenezuela)</div>
+        <div id="bcv-status" class="status"></div>
       </div>
     </div>
 
-    <div id="last-update" class="last-update">
-      Última actualización: —
+    <div class="section">
+      <h3 class="section-title">📊 Brecha Cambiaria (BCV vs Binance)</h3>
+      <div class="breach-info">
+        <div>
+          <div class="breach-number" id="breach-bs">—</div>
+          <div style="color: #9ca3af; font-size: 0.85rem;">Diferencia en Bs</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="breach-pct" id="breach-pct">—</div>
+          <div style="color: #9ca3af; font-size: 0.85rem;">% de diferencia</div>
+        </div>
+      </div>
+      <div class="bar"><div id="breach-fill" class="fill"></div></div>
+      <div style="color: #9ca3af; font-size: 0.8rem; text-align: center;">
+        (Binance está más alto = brecha positiva)
+      </div>
     </div>
 
-    <div class="footer">
-      Actualiza cada <span class="highlight">30s</span> · Backend Node.js en Vercel · Hecho para Hw 🔥
+    <div class="section">
+      <h3 class="section-title">🧮 Calculadora (Bs ↔️ USD)</h3>
+
+      <div class="calc-grid">
+        <div>
+          <label for="calc-source">Tasa a usar</label>
+          <select id="calc-source">
+            <option value="binance">Binance (promedio)</option>
+            <option value="kontigo">Kontigo (promedio)</option>
+            <option value="bcv">BCV</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="amount-ves">Bolívares (Bs)</label>
+          <input id="amount-ves" type="number" inputmode="decimal" placeholder="Ej: 10000" />
+        </div>
+
+        <div>
+          <label for="amount-usd">Dólares (USD)</label>
+          <input id="amount-usd" type="number" inputmode="decimal" placeholder="Ej: 50" />
+        </div>
+      </div>
+
+      <div class="calc-meta" id="calc-meta">Cargando tasas…</div>
     </div>
+
+    <div id="last-update" class="last-update">Última actualización: —</div>
+    <div class="footer">Backend Node.js en Vercel · Hecho para Hw 🔥</div>
   </div>
 
   <script>
-    const REFRESH_MS = 30000; // 30 segundos
+    const REFRESH_MS = 30000;
 
-    // Elementos del DOM
-    const elBinanceBuy   = document.getElementById('binance-buy');
-    const elBinanceSell  = document.getElementById('binance-sell');
-    const elBinanceStat  = document.getElementById('binance-status');
-    const elKontigoBuy   = document.getElementById('kontigo-buy');
-    const elKontigoSell  = document.getElementById('kontigo-sell');
-    const elKontigoStat  = document.getElementById('kontigo-status');
-    const elLastUpdate   = document.getElementById('last-update');
+    const els = {
+      binanceBuy: document.getElementById('binance-buy'),
+      binanceSell: document.getElementById('binance-sell'),
+      binanceStatus: document.getElementById('binance-status'),
+
+      kontigoBuy: document.getElementById('kontigo-buy'),
+      kontigoSell: document.getElementById('kontigo-sell'),
+      kontigoStatus: document.getElementById('kontigo-status'),
+
+      bcvRate: document.getElementById('bcv-rate'),
+      bcvStatus: document.getElementById('bcv-status'),
+
+      breachBs: document.getElementById('breach-bs'),
+      breachPct: document.getElementById('breach-pct'),
+      breachFill: document.getElementById('breach-fill'),
+
+      calcSource: document.getElementById('calc-source'),
+      amountVES: document.getElementById('amount-ves'),
+      amountUSD: document.getElementById('amount-usd'),
+      calcMeta: document.getElementById('calc-meta'),
+
+      lastUpdate: document.getElementById('last-update'),
+    };
+
+    const state = {
+      rates: {
+        binance: null,
+        kontigo: null,
+        bcv: null,
+      },
+      lastEdited: 'ves'
+    };
 
     function formatBs(value) {
-      if (value == null || isNaN(value)) return '-';
+      if (value == null || isNaN(value)) return '—';
       return new Intl.NumberFormat('es-VE', {
         style: 'currency',
         currency: 'VES',
@@ -204,77 +240,174 @@
       }).format(value);
     }
 
+    function formatUSD(value) {
+      if (value == null || isNaN(value)) return '—';
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 2
+      }).format(value);
+    }
+
     async function fetchJson(url) {
-      const resp = await fetch(url);
-      if (!resp.ok) {
-        throw new Error('HTTP ' + resp.status);
-      }
-      return resp.json();
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
     }
 
     async function loadBinance() {
-      elBinanceStat.textContent = 'Cargando...';
-      elBinanceStat.className = 'status';
-
+      els.binanceStatus.textContent = 'Cargando...';
+      els.binanceStatus.className = 'status';
       try {
         const data = await fetchJson('/api/binance_ves');
+        if (!data.success) throw new Error(data.error);
 
-        if (!data.success) {
-          throw new Error(data.error || 'Error desconocido');
-        }
+        state.rates.binance = {
+          buy: data.buy,
+          sell: data.sell,
+          mid: (data.buy + data.sell) / 2
+        };
 
-        elBinanceBuy.textContent = formatBs(data.buy);
-        elBinanceSell.textContent = formatBs(data.sell);
-        elBinanceStat.textContent = '✅ OK · Datos desde Binance P2P';
-        elBinanceStat.className = 'status ok';
-
+        els.binanceBuy.textContent = formatBs(data.buy);
+        els.binanceSell.textContent = formatBs(data.sell);
+        els.binanceStatus.textContent = '✅ OK';
+        els.binanceStatus.className = 'status ok';
       } catch (err) {
-        console.error('Error cargando Binance:', err);
-        elBinanceBuy.textContent = '-';
-        elBinanceSell.textContent = '-';
-        elBinanceStat.textContent = '❌ Error: ' + err.message;
-        elBinanceStat.className = 'status error';
+        console.error('Binance error:', err);
+        els.binanceBuy.textContent = '—';
+        els.binanceSell.textContent = '—';
+        els.binanceStatus.textContent = '❌ ' + err.message;
+        els.binanceStatus.className = 'status error';
       }
     }
 
     async function loadKontigo() {
-      elKontigoStat.textContent = 'Cargando...';
-      elKontigoStat.className = 'status';
-
+      els.kontigoStatus.textContent = 'Cargando...';
+      els.kontigoStatus.className = 'status';
       try {
         const data = await fetchJson('/api/kontigo_ves');
+        if (!data.success) throw new Error(data.error);
 
-        if (!data.success) {
-          throw new Error(data.error || 'Error desconocido');
-        }
+        state.rates.kontigo = {
+          buy: data.buy,
+          sell: data.sell,
+          mid: (data.buy + data.sell) / 2
+        };
 
-        elKontigoBuy.textContent = formatBs(data.buy);
-        elKontigoSell.textContent = formatBs(data.sell);
-        elKontigoStat.textContent = '✅ Simulado desde BCV + spread';
-        elKontigoStat.className = 'status ok';
-
+        els.kontigoBuy.textContent = formatBs(data.buy);
+        els.kontigoSell.textContent = formatBs(data.sell);
+        els.kontigoStatus.textContent = '✅ Simulado';
+        els.kontigoStatus.className = 'status ok';
       } catch (err) {
-        console.error('Error cargando Kontigo:', err);
-        elKontigoBuy.textContent = '-';
-        elKontigoSell.textContent = '-';
-        elKontigoStat.textContent = '❌ Error: ' + err.message;
-        elKontigoStat.className = 'status error';
+        console.error('Kontigo error:', err);
+        els.kontigoBuy.textContent = '—';
+        els.kontigoSell.textContent = '—';
+        els.kontigoStatus.textContent = '❌ ' + err.message;
+        els.kontigoStatus.className = 'status error';
       }
     }
 
+    async function loadBCV() {
+      els.bcvStatus.textContent = 'Cargando...';
+      els.bcvStatus.className = 'status';
+      try {
+        const data = await fetchJson('/api/bcv_ves');
+        if (!data.success) throw new Error(data.error);
+
+        state.rates.bcv = {
+          buy: data.rate,
+          sell: data.rate,
+          mid: data.rate
+        };
+
+        els.bcvRate.textContent = formatBs(data.rate);
+        els.bcvStatus.textContent = '✅ OK';
+        els.bcvStatus.className = 'status ok';
+      } catch (err) {
+        console.error('BCV error:', err);
+        els.bcvRate.textContent = '—';
+        els.bcvStatus.textContent = '❌ ' + err.message;
+        els.bcvStatus.className = 'status error';
+      }
+    }
+
+    function updateBreach() {
+      if (!state.rates.binance || !state.rates.bcv) {
+        els.breachBs.textContent = '—';
+        els.breachPct.textContent = '—';
+        els.breachFill.style.width = '0%';
+        return;
+      }
+
+      const binanceMid = state.rates.binance.mid;
+      const bcvRate = state.rates.bcv.mid;
+
+      const diffBs = binanceMid - bcvRate;
+      const diffPct = ((binanceMid - bcvRate) / bcvRate) * 100;
+
+      els.breachBs.textContent = diffBs > 0 ? `+Bs $${diffBs.toFixed(2)}` : `Bs $${diffBs.toFixed(2)}`;
+      els.breachPct.textContent = diffPct > 0 ? `+$${diffPct.toFixed(1)}%` : `$${diffPct.toFixed(1)}%`;
+
+      // Barra: máximo 50% de diferencia = 100% lleno
+      const fillPct = Math.min(Math.abs(diffPct) / 50 * 100, 100);
+      els.breachFill.style.width = fillPct + '%';
+    }
+
+    function updateCalculator() {
+      const source = els.calcSource.value;
+      const rates = state.rates[source];
+
+      if (!rates) {
+        els.calcMeta.textContent = 'Cargando tasas...';
+        els.amountVES.disabled = true;
+        els.amountUSD.disabled = true;
+        return;
+      }
+
+      els.amountVES.disabled = false;
+      els.amountUSD.disabled = false;
+
+      const vesVal = parseFloat(els.amountVES.value);
+      const usdVal = parseFloat(els.amountUSD.value);
+
+      if (!isNaN(vesVal) && vesVal > 0 && state.lastEdited === 'ves') {
+        const usd = vesVal / rates.mid;
+        els.amountUSD.value = usd.toFixed(2);
+      } else if (!isNaN(usdVal) && usdVal > 0 && state.lastEdited === 'usd') {
+        const ves = usdVal * rates.mid;
+        els.amountVES.value = ves.toFixed(2);
+      }
+
+      els.calcMeta.textContent = `Tasa $${source}: $${formatBs(rates.mid)} por 1 USD`;
+    }
+
+    els.amountVES.addEventListener('input', () => {
+      state.lastEdited = 'ves';
+      updateCalculator();
+    });
+
+    els.amountUSD.addEventListener('input', () => {
+      state.lastEdited = 'usd';
+      updateCalculator();
+    });
+
+    els.calcSource.addEventListener('change', () => {
+      els.amountVES.value = '';
+      els.amountUSD.value = '';
+      updateCalculator();
+    });
+
     async function loadAll() {
-      await Promise.all([loadBinance(), loadKontigo()]);
+      await Promise.all([loadBinance(), loadKontigo(), loadBCV()]);
+      updateBreach();
+      updateCalculator();
 
       const now = new Date();
-      elLastUpdate.textContent =
-        'Última actualización: ' +
+      els.lastUpdate.textContent = 'Última actualización: ' +
         now.toLocaleString('es-VE', { hour12: false });
     }
 
-    // Primera carga
     loadAll();
-
-    // Auto-refresh
     setInterval(loadAll, REFRESH_MS);
   </script>
 </body>
