@@ -526,15 +526,17 @@
       <p style="color: #94a3b8; font-size: 0.9rem;">(Binance más alto = brecha positiva)</p>
     </div>
 
-    <!-- ALERTAS POR BRECHA -->
+    <!-- ALERTAS POR PRECIO -->
     <div class="alert-section">
       <div class="alert-title">🚨 Configurar Alerta por Precio (Binance)</div>
-      <div class="alert-input">
-        <input type="email" id="alertEmail" placeholder="Tu email (ej: tu@email.com)">
-        <input type="number" id="alertThreshold" placeholder="Precio en Bs (ej: 460)" min="0">
-        <button class="button button-primary button-small" onclick="setAlert()">Activar Alerta</button>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <input type="email" id="alertEmail" placeholder="Tu email" style="width: 100%; padding: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 0.5rem; color: #e2e8f0;">
+          <input type="number" id="alertThreshold" placeholder="Precio en Bs" style="width: 100%; padding: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 0.5rem; color: #e2e8f0;">
+        </div>
+        <button class="button button-primary" style="width: 100%;" onclick="setAlert()">Activar Alerta</button>
       </div>
-      <p style="color: #94a3b8; font-size: 0.85rem;">Recibirás un email cuando Binance supere el precio en Bs que indiques</p>
+      <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.75rem;">Recibirás un email cuando Binance supere el precio en Bs que indiques</p>
       <p id="alertStatus" style="color: #10b981; font-size: 0.85rem; margin-top: 0.5rem;"></p>
     </div>
 
