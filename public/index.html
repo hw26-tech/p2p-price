@@ -439,6 +439,40 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    .refresh-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .refresh-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+    }
+
+    .refresh-btn:active {
+      transform: scale(0.95);
+    }
+
+    .refresh-btn.loading {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -507,7 +541,7 @@
         </div>
         <div class="price-row">
           <span class="price-label">Fuente:</span>
-          <span style="color: #94a3b8; font-size: 0.9rem;">HW API</span>
+          <span style="color: #94a3b8; font-size: 0.9rem;">Exchange Rate API</span>
         </div>
         <p class="status" id="bcvStatus"><span class="loading"></span> Cargando...</p>
       </div>
@@ -565,6 +599,13 @@
           </select>
         </div>
         <div class="calc-input">
+          <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="includeCommission" onchange="updateCalcFromUSD()" style="width: auto; cursor: pointer;">
+            <span>Incluir comisión</span>
+          </label>
+          <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">Binance: 1% | Kontigo: 1.5%</p>
+        </div>
+        <div class="calc-input">
           <label>USD:</label>
           <input type="number" id="calcUSD" placeholder="0" oninput="updateCalcFromUSD()">
         </div>
@@ -600,10 +641,14 @@
     </div>
 
     <footer>
-      <p>Backend: @hwisintainer • PWA instalable • Datos en tiempo real</p>
+      <p>Backend: Node.js en Vercel • PWA instalable • Datos en tiempo real</p>
       <p style="margin-top: 1rem; color: #475569;">Hecho con ❤️ para Venezuela</p>
     </footer>
   </div>
+
+
+  <!-- BOTÓN DE ACTUALIZACIÓN FORZADA -->
+  <button class="refresh-btn" id="refreshBtn" onclick="forceRefresh()" title="Actualizar ahora">⚡</button>
 
   <script>
     let currentData = {
@@ -768,29 +813,26 @@
           labels,
           datasets: [
             {
-              label: 'Binance (promedio)',
+              label: '📊 Binance P2P',
               data: binanceData,
-              borderColor: '#60a5fa',
-              backgroundColor: 'rgba(96, 165, 250, 0.1)',
-              tension: 0.4,
-              fill: true
-            },
-            {
-              label: 'BCV',
-              data: bcvData,
               borderColor: '#fbbf24',
-              backgroundColor: 'rgba(251, 191, 36, 0.1)',
-              tension: 0.4,
-              fill: true
-            },
-            {
-              label: 'Brecha %',
-              data: brechaData,
-              borderColor: '#34d399',
-              backgroundColor: 'rgba(52, 211, 153, 0.1)',
+              backgroundColor: 'rgba(251, 191, 36, 0.2)',
+              borderWidth: 3,
               tension: 0.4,
               fill: true,
-              yAxisID: 'y1'
+              pointRadius: 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: '🏦 BCV Oficial',
+              data: bcvData,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.2)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 4,
+              pointHoverRadius: 6
             }
           ]
         },
@@ -799,7 +841,20 @@
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: {
-              labels: { color: '#e2e8f0' }
+              labels: { 
+                color: '#e2e8f0',
+                font: { size: 14, weight: 'bold' },
+                padding: 15
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(148, 163, 184, 0.3)',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true
             }
           },
           scales: {
@@ -807,18 +862,20 @@
               type: 'linear',
               display: true,
               position: 'left',
-              ticks: { color: '#94a3b8' },
+              ticks: { 
+                color: '#94a3b8',
+                font: { size: 12 },
+                callback: function(value) {
+                  return 'Bs ' + value.toFixed(2);
+                }
+              },
               grid: { color: 'rgba(148, 163, 184, 0.1)' }
             },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              ticks: { color: '#94a3b8' },
-              grid: { drawOnChartArea: false }
-            },
             x: {
-              ticks: { color: '#94a3b8' },
+              ticks: { 
+                color: '#94a3b8',
+                font: { size: 11 }
+              },
               grid: { color: 'rgba(148, 163, 184, 0.1)' }
             }
           }
@@ -875,21 +932,27 @@
       updateCalcFromUSD();
     }
 
-    // Calculadora Bidireccional
+    // Calculadora Bidireccional con Comisiones
     function updateCalcFromUSD() {
       const usd = Number(document.getElementById('calcUSD').value) || 0;
       const rateType = document.getElementById('calcRate').value;
+      const includeCommission = document.getElementById('includeCommission').checked;
 
       let rate = 0;
+      let commission = 0;
+
       if (rateType === 'binance') {
         rate = (currentData.binance_buy + currentData.binance_sell) / 2;
+        commission = includeCommission ? 0.01 : 0; // 1%
       } else if (rateType === 'kontigo') {
         rate = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+        commission = includeCommission ? 0.015 : 0; // 1.5%
       } else {
         rate = currentData.bcv;
+        commission = 0; // BCV no tiene comisión
       }
 
-      const result = usd * rate;
+      const result = usd * rate * (1 - commission);
       document.getElementById('calcResult').textContent = formatBs(result);
       document.getElementById('calcBS').value = result.toFixed(2);
     }
@@ -897,17 +960,23 @@
     function updateCalcFromBS() {
       const bs = Number(document.getElementById('calcBS').value) || 0;
       const rateType = document.getElementById('calcRate').value;
+      const includeCommission = document.getElementById('includeCommission').checked;
 
       let rate = 0;
+      let commission = 0;
+
       if (rateType === 'binance') {
         rate = (currentData.binance_buy + currentData.binance_sell) / 2;
+        commission = includeCommission ? 0.01 : 0;
       } else if (rateType === 'kontigo') {
         rate = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+        commission = includeCommission ? 0.015 : 0;
       } else {
         rate = currentData.bcv;
+        commission = 0;
       }
 
-      const usd = bs / rate;
+      const usd = bs / (rate * (1 - commission));
       document.getElementById('calcUSD').value = usd.toFixed(2);
       document.getElementById('calcResult').textContent = formatBs(bs);
     }
@@ -968,6 +1037,22 @@
     // PWA Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+    }
+
+
+    // Actualización forzada
+    async function forceRefresh() {
+      const btn = document.getElementById('refreshBtn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      await loadData();
+      await loadHistory();
+
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }, 1000);
     }
 
     // Iniciar
