@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23000' width='192' height='192' rx='40'/><text x='50%' y='55%' font-size='120' fill='%23fff' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-weight='bold'>₿</text></svg>">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <title>P2P Price Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .container { max-width: 800px; margin: 0 auto; }
+
+    /* PORTADA TIPO APP */
+    .app-cover {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 0;
+      margin-bottom: 1rem;
+    }
+
+    .app-icon {
+      width: 100px;
+      height: 100px;
+      background: #000;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      color: white;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      margin-bottom: 1rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle { color: #94a3b8; font-size: 0.85rem; }
+    .timestamp { color: #64748b; font-size: 0.75rem; margin-top: 0.5rem; }
+
+    /* CALCULADORA ARRIBA */
+    .calculator {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .calculator-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+
+    .calc-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .calc-input { display: flex; flex-direction: column; }
+    .calc-input label { color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.4rem; font-weight: 600; }
+
+    .calc-input input,
+    .calc-input select {
+      padding: 0.8rem;
+      background: #000;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 0.75rem;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .calc-result {
+      background: rgba(16, 185, 129, 0.15);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .calc-result-value { font-size: 1.8rem; font-weight: 800; color: #10b981; }
+
+    /* GRID DE TASAS */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .card-title { font-size: 0.9rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+
+    .price-value { font-size: 1.6rem; font-weight: 800; color: #fff; }
+    .price-label { font-size: 0.75rem; color: #64748b; }
+
+    /* BRECHA ABAJO */
+    .brecha-section {
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .brecha-bar {
+      width: 100%;
+      height: 12px;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .brecha-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      transition: width 0.5s ease;
+    }
+
+    .share-buttons { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .share-btn {
+      flex: 1;
+      padding: 0.75rem;
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 0.75rem;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .notif-btn {
+      background: #1e293b;
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #c084fc;
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    .notif-btn.active { background: #10b981; color: white; border: none; }
+
+    .refresh-btn {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      width: 50px;
+      height: 50px;
+      border-radius: 25px;
+      background: #fff;
+      color: #000;
+      border: none;
+      font-size: 1.2rem;
+      font-weight: bold;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="app-cover">
+      <div class="app-icon">₿</div>
+      <header>
+        <h1>P2P Price Tracker</h1>
+        <p class="subtitle">Tasas en tiempo real • @hwisintainer</p>
+        <button class="notif-btn" id="notifBtn" onclick="toggleNotifications()">🔔 Activar Alertas L/M/V</button>
+      </header>
+    </div>
+
+    <!-- CALCULADORA ARRIBA -->
+    <div class="calculator">
+      <div class="calculator-title">🧮 Calculadora Rápida</div>
+      <div class="calc-row">
+        <div class="calc-input">
+          <label>Tasa</label>
+          <select id="calcRate" onchange="updateCalc()">
+            <option value="binance">Binance Avg</option>
+            <option value="bcv">BCV USD</option>
+            <option value="euro">BCV EUR</option>
+          </select>
+        </div>
+        <div class="calc-input">
+          <label>Monto (USD/EUR)</label>
+          <input type="number" id="calcUSD" placeholder="0" oninput="updateCalc()">
+        </div>
+      </div>
+      <div class="calc-result">
+        <div class="calc-result-value" id="calcResult">Bs 0,00</div>
+      </div>
+      <div class="share-buttons">
+        <button class="share-btn" onclick="copyCalc()">📋 Copiar</button>
+        <button class="share-btn" onclick="generateCapture()">📸 Captura</button>
+      </div>
+    </div>
+
+    <!-- GRID DE TASAS -->
+    <div class="grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Binance P2P</span></div>
+        <div class="price-value" id="binanceAvg">—</div>
+        <div class="price-label">Promedio Compra/Venta</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">BCV Dólar</span></div>
+        <div class="price-value" id="bcvRate">—</div>
+        <div class="price-label">Tasa Oficial USD</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">BCV Euro</span></div>
+        <div class="price-value" id="bcvEuro">—</div>
+        <div class="price-label">Tasa Oficial EUR</div>
+      </div>
+    </div>
+
+    <!-- BRECHA ABAJO -->
+    <div class="brecha-section">
+      <div class="card-title" style="margin-bottom: 0.5rem;">Brecha Cambiaria</div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div class="price-value" id="brechaValue" style="font-size: 1.2rem; color: #94a3b8;">—</div>
+        <div id="brechaPercentage" style="font-weight: 800; color: #10b981; font-size: 1.2rem;">0%</div>
+      </div>
+      <div class="brecha-bar"><div class="brecha-fill" id="brechaFill" style="width: 0%;"></div></div>
+
+      <div class="share-buttons">
+        <button class="share-btn" onclick="copyCurrentRate()">📋 Copiar todas las tasas</button>
+        <button class="share-btn" onclick="shareWhatsApp()">💬 WhatsApp</button>
+      </div>
+    </div>
+
+    <div style="text-align: center; color: #475569; font-size: 0.7rem; padding-bottom: 2rem;">
+      Actualizado: <span id="lastUpdate">—</span> • Próximo en <span id="nextUpdate">30</span>s
+    </div>
+  </div>
+
+  <button class="refresh-btn" onclick="loadData()">⚡</button>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+    }
+
+    let currentData = { binance_buy: 0, binance_sell: 0, bcv: 0, euro: 0 };
+    let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+    let lastNotified = JSON.parse(localStorage.getItem('lastNotifiedRates') || 'null');
+
+    function formatBs(value) {
+      if (!value) return '—';
+      return 'Bs ' + Number(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function loadData() {
+      try {
+        const t = Date.now();
+        const [binRes, bcvRes] = await Promise.all([
+          fetch(`/api/binance_ves?t=${t}`, { cache: 'no-store' }),
+          fetch(`/api/bcv_ves?t=${t}`, { cache: 'no-store' })
+        ]);
+        const bin = await binRes.json();
+        const bcv = await bcvRes.json();
+
+        const prev = { avg: (currentData.binance_buy + currentData.binance_sell)/2, bcv: currentData.bcv, euro: currentData.euro };
+
+        if (bin.success) {
+          currentData.binance_buy = bin.buy;
+          currentData.binance_sell = bin.sell;
+          document.getElementById('binanceAvg').textContent = formatBs((bin.buy + bin.sell)/2);
+        }
+        if (bcv.success) {
+          currentData.bcv = bcv.rate;
+          currentData.euro = bcv.euro;
+          document.getElementById('bcvRate').textContent = formatBs(bcv.rate);
+          document.getElementById('bcvEuro').textContent = formatBs(bcv.euro);
+        }
+
+        updateBrecha();
+        updateCalc();
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+        maybeNotify(prev);
+      } catch (e) { console.error(e); }
+    }
+
+    function updateBrecha() {
+      const avg = (currentData.binance_buy + currentData.binance_sell)/2;
+      const diff = avg - currentData.bcv;
+      const per = currentData.bcv ? (diff/currentData.bcv)*100 : 0;
+      document.getElementById('brechaValue').textContent = formatBs(diff);
+      document.getElementById('brechaPercentage').textContent = per.toFixed(2) + '%';
+      document.getElementById('brechaFill').style.width = Math.min(per * 5, 100) + '%';
+    }
+
+    function updateCalc() {
+      const val = Number(document.getElementById('calcUSD').value) || 0;
+      const type = document.getElementById('calcRate').value;
+      let rate = currentData.bcv;
+      if (type === 'binance') rate = (currentData.binance_buy + currentData.binance_sell)/2;
+      if (type === 'euro') rate = currentData.euro;
+      document.getElementById('calcResult').textContent = formatBs(val * rate);
+    }
+
+    function copyCalc() {
+      const text = `🧮 Calculadora HW:\n${document.getElementById('calcUSD').value} USD/EUR = ${document.getElementById('calcResult').textContent}`;
+      navigator.clipboard.writeText(text);
+      alert('Copiado');
+    }
+
+    function copyCurrentRate() {
+      const avg = (currentData.binance_buy + currentData.binance_sell)/2;
+      const text = `📊 Tasas HW:\n🔸 Binance: ${formatBs(avg)}\n🏦 BCV USD: ${formatBs(currentData.bcv)}\n🇪🇺 BCV EUR: ${formatBs(currentData.euro)}`;
+      navigator.clipboard.writeText(text);
+      alert('Tasas copiadas');
+    }
+
+    function shareWhatsApp() {
+      const avg = (currentData.binance_buy + currentData.binance_sell)/2;
+      const text = `📊 Tasas HW:\n🔸 Binance: ${formatBs(avg)}\n🏦 BCV USD: ${formatBs(currentData.bcv)}\n🇪🇺 BCV EUR: ${formatBs(currentData.euro)}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    }
+
+    function toggleNotifications() {
+      if (notificationsEnabled) {
+        notificationsEnabled = false;
+        localStorage.setItem('notificationsEnabled', 'false');
+        document.getElementById('notifBtn').classList.remove('active');
+        document.getElementById('notifBtn').textContent = '🔔 Activar Alertas L/M/V';
+      } else {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') {
+            notificationsEnabled = true;
+            localStorage.setItem('notificationsEnabled', 'true');
+            document.getElementById('notifBtn').classList.add('active');
+            document.getElementById('notifBtn').textContent = '🔕 Alertas ON';
+          }
+        });
+      }
+    }
+
+    function maybeNotify(prev) {
+      if (!notificationsEnabled || Notification.permission !== 'granted') return;
+      const day = new Date().getDay();
+      if (![1,3,5].includes(day)) return;
+
+      const avg = (currentData.binance_buy + currentData.binance_sell)/2;
+      const msg = [];
+      if (avg > prev.avg && prev.avg > 0) msg.push(`Binance subió a ${formatBs(avg)}`);
+      if (currentData.bcv > prev.bcv && prev.bcv > 0) msg.push(`BCV USD subió a ${formatBs(currentData.bcv)}`);
+
+      if (msg.length > 0) {
+        new Notification('📈 Tasa en alza', { body: msg.join('\n') });
+      }
+    }
+
+    async function generateCapture() {
+      const avg = (currentData.binance_buy + currentData.binance_sell)/2;
+      const area = document.createElement('div');
+      area.style = "padding:30px; background:#000; color:#fff; width:400px; text-align:center; font-family:sans-serif; position:fixed; left:-9999px;";
+      area.innerHTML = `<div style="border:1px solid #333; padding:20px; border-radius:20px;">
+        <div style="font-size:50px; margin-bottom:10px;">₿</div>
+        <h2 style="margin-bottom:20px;">TASAS HW</h2>
+        <div style="font-size:24px; margin:10px 0;">Binance: ${formatBs(avg)}</div>
+        <div style="font-size:24px; margin:10px 0;">BCV USD: ${formatBs(currentData.bcv)}</div>
+        <div style="font-size:24px; margin:10px 0;">BCV EUR: ${formatBs(currentData.euro)}</div>
+        <div style="font-size:12px; color:#666; margin-top:20px;">${new Date().toLocaleString()}</div>
+      </div>`;
+      document.body.appendChild(area);
+      const canvas = await html2canvas(area);
+      const link = document.createElement('a');
+      link.download = `Tasas_HW.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+      document.body.removeChild(area);
+    }
+
+    setInterval(() => {
+      let c = Number(document.getElementById('nextUpdate').textContent);
+      if (c <= 1) { loadData(); document.getElementById('nextUpdate').textContent = 30; }
+      else { document.getElementById('nextUpdate').textContent = c - 1; }
+    }, 1000);
+
+    window.onload = () => {
+      if (notificationsEnabled) {
+        document.getElementById('notifBtn').classList.add('active');
+        document.getElementById('notifBtn').textContent = '🔕 Alertas ON';
+      }
+      loadData();
+    };
+  </script>
+</body>
+</html>
