@@ -5,33 +5,36 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  // evita cache en Vercel/CDN
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    // API tipo "Exchange Rate API" (ejemplo público)
     const url = 'https://open.er-api.com/v6/latest/USD';
-    const r = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
 
-    if (!r.ok) {
-      throw new Error('HTTP ' + r.status);
-    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
 
     const data = await r.json();
 
-    if (!data || !data.rates || typeof data.rates.VES !== 'number') {
-      throw new Error('La respuesta no trae rate VES');
-    }
+    const usdToVes = data?.rates?.VES;
+    const usdToEur = data?.rates?.EUR;
 
-    const rate = data.rates.VES;
+    if (typeof usdToVes !== 'number') throw new Error('La respuesta no trae rate VES');
+    if (typeof usdToEur !== 'number' || usdToEur === 0) throw new Error('La respuesta no trae rate EUR');
+
+    const eurToVes = usdToVes / usdToEur;
 
     return res.status(200).json({
       success: true,
-      source: 'Exchange Rate API (USD→VES)',
-      rate
+      source: 'open.er-api.com (USD base)',
+      rate: usdToVes,     // USD->VES
+      euro: eurToVes      // EUR->VES calculado
     });
   } catch (err) {
     console.error('bcv_ves error:', err);
