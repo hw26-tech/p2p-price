@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1e293b">
+  <meta name="description" content="Comparador de tasas: Binance P2P vs BCV (Dólar/Euro) en tiempo real">
+
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <title>P2P Price Tracker - Binance vs BCV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 1rem;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle { color: #94a3b8; font-size: 0.95rem; }
+    .timestamp { color: #64748b; font-size: 0.85rem; margin-top: 0.5rem; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(148, 163, 184, 0.4);
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    .card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .card-title { font-size: 1.25rem; font-weight: 600; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-primary { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .badge-success { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    .price-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .price-row:last-child { border-bottom: none; }
+    .price-label { color: #94a3b8; font-size: 0.9rem; }
+    .price-value { font-size: 1.5rem; font-weight: 700; color: #fbbf24; }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+      color: #10b981;
+    }
+
+    .brecha-section {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .brecha-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+    .brecha-value { font-size: 2.5rem; font-weight: 700; color: #fbbf24; margin-bottom: 0.5rem; }
+    .brecha-percentage { font-size: 1.5rem; color: #34d399; margin-bottom: 1rem; }
+
+    .brecha-bar {
+      width: 100%;
+      height: 30px;
+      background: rgba(148, 163, 184, 0.1);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .brecha-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f97316);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .calculator {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .calculator-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+
+    .calc-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .calc-input { display: flex; flex-direction: column; }
+    .calc-input label { color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem; }
+
+    .calc-input input,
+    .calc-input select {
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      font-size: 1rem;
+    }
+
+    .calc-result {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .calc-result-value { font-size: 2rem; font-weight: 700; color: #10b981; }
+
+    .share-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+
+    .share-btn {
+      padding: 0.5rem 1rem;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 0.5rem;
+      color: #60a5fa;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .share-btn:hover { background: rgba(59, 130, 246, 0.3); }
+
+    .notif-btn {
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #c084fc;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      margin-left: 0.5rem;
+    }
+
+    .notif-btn.active {
+      background: rgba(16, 185, 129, 0.3);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #10b981;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+
+    .refresh-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      z-index: 1000;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(148, 163, 184, 0.3);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .capture-area {
+      padding: 20px;
+      background: #0f172a;
+      width: 400px;
+      position: fixed;
+      left: -9999px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>💱 P2P Price Tracker <button style="background:none;border:none;cursor:pointer;font-size:1.5rem;" onclick="generateCapture()">📸</button></h1>
+      <p class="subtitle">Binance P2P vs BCV (Dólar/Euro) • Tasas en Bolívares (Bs)</p>
+      <p class="subtitle">Actualización automática cada 30 segundos <button class="notif-btn" id="notifBtn" onclick="toggleNotifications()">🔔 Activar Notificaciones</button></p>
+      <p class="timestamp">Última actualización: <span id="lastUpdate">—</span></p>
+      <p class="timestamp">Próxima actualización en: <span id="nextUpdate">—</span>s</p>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 Binance P2P</span>
+          <span class="badge badge-primary">USDT ⇄ VES</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Compra:</span>
+          <span class="price-value" id="binanceBuy">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Venta:</span>
+          <span class="price-value" id="binanceSell">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Promedio:</span>
+          <span class="price-value" id="binanceAvg">—</span>
+        </div>
+        <p class="status" id="binanceStatus"><span class="loading-spinner"></span> Cargando...</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏦 BCV Dólar</span>
+          <span class="badge badge-warning">Oficial</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Tasa USD:</span>
+          <span class="price-value" id="bcvRate">—</span>
+        </div>
+        <p class="status" id="bcvStatus"><span class="loading-spinner"></span> Cargando...</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🇪🇺 BCV Euro</span>
+          <span class="badge badge-success">Oficial</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Tasa EUR:</span>
+          <span class="price-value" id="bcvEuro">—</span>
+        </div>
+        <p class="status" id="bcvEuroStatus"><span class="loading-spinner"></span> Cargando...</p>
+      </div>
+    </div>
+
+    <div class="brecha-section">
+      <div class="card-header">
+        <span class="brecha-title">📈 Brecha Cambiaria (Binance vs BCV USD)</span>
+      </div>
+      <div class="brecha-value" id="brechaValue">—</div>
+      <div class="brecha-percentage" id="brechaPercentage">—</div>
+      <div class="brecha-bar">
+        <div class="brecha-fill" id="brechaFill" style="width: 0%;">0%</div>
+      </div>
+    </div>
+
+    <div class="calculator">
+      <div class="calculator-title">🧮 Calculadora de Conversión</div>
+      <div class="calc-row">
+        <div class="calc-input">
+          <label>Tasa a usar:</label>
+          <select id="calcRate" onchange="updateCalcFromUSD()">
+            <option value="binance">Binance (Promedio)</option>
+            <option value="bcv">BCV Dólar</option>
+            <option value="euro">BCV Euro</option>
+          </select>
+        </div>
+        <div class="calc-input">
+          <label>Monto (USD/EUR):</label>
+          <input type="number" id="calcUSD" placeholder="0" oninput="updateCalcFromUSD()">
+        </div>
+      </div>
+      <div class="calc-result">
+        <p style="color: #94a3b8; margin-bottom: 0.5rem;">Resultado en Bs:</p>
+        <div class="calc-result-value" id="calcResult">0</div>
+      </div>
+      <div class="share-buttons">
+        <button class="share-btn" onclick="copyCalcResult()">📋 Copiar resultado</button>
+      </div>
+    </div>
+
+    <div class="calculator">
+      <div class="calculator-title">📤 Compartir Tasa Actual</div>
+      <div class="share-buttons">
+        <button class="share-btn" onclick="copyCurrentRate()">📋 Copiar tasas</button>
+        <button class="share-btn" onclick="shareCurrentWhatsApp()">💬 Compartir por WhatsApp</button>
+      </div>
+    </div>
+
+    <footer>
+      <p>Backend: @hwisintainer • Datos en tiempo real</p>
+    </footer>
+  </div>
+
+  <button class="refresh-btn" onclick="loadData()">⚡</button>
+
+  <script>
+    // Anti-PWA / anti-cache: si alguna vez quedó un Service Worker viejo pegado, lo sacamos.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+    }
+
+    let currentData = { binance_buy: 0, binance_sell: 0, bcv: 0, euro: 0 };
+    let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+
+    // Guardamos el último valor notificado para evitar spam SOLO por repetición exacta,
+    // pero OJO: tú pediste sin cooldown, así que si sube/sube/sube, notificará cada subida.
+    let lastNotified = JSON.parse(localStorage.getItem('lastNotifiedRates') || 'null');
+
+    function formatBs(value) {
+      if (value == null || isNaN(value)) return '—';
+      return 'Bs ' + Number(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function approxEq(a, b) {
+      return Math.abs((a || 0) - (b || 0)) < 0.000001;
+    }
+
+    async function loadData() {
+      try {
+        const t = Date.now();
+        const [binanceRes, bcvRes] = await Promise.all([
+          fetch(`/api/binance_ves?t=${t}`, { cache: 'no-store' }),
+          fetch(`/api/bcv_ves?t=${t}`, { cache: 'no-store' })
+        ]);
+
+        const binance = await binanceRes.json();
+        const bcv = await bcvRes.json();
+
+        const prev = {
+          binanceAvg: (currentData.binance_buy + currentData.binance_sell) / 2,
+          bcv: currentData.bcv,
+          euro: currentData.euro
+        };
+
+        if (binance.success) {
+          currentData.binance_buy = binance.buy;
+          currentData.binance_sell = binance.sell;
+          document.getElementById('binanceBuy').textContent = formatBs(binance.buy);
+          document.getElementById('binanceSell').textContent = formatBs(binance.sell);
+          document.getElementById('binanceAvg').textContent = formatBs((binance.buy + binance.sell) / 2);
+          document.getElementById('binanceStatus').innerHTML = '✅ OK';
+        } else {
+          document.getElementById('binanceStatus').innerHTML = '❌ Error';
+        }
+
+        if (bcv.success) {
+          currentData.bcv = bcv.rate;
+          currentData.euro = bcv.euro;
+          document.getElementById('bcvRate').textContent = formatBs(currentData.bcv);
+          document.getElementById('bcvEuro').textContent = formatBs(currentData.euro);
+          document.getElementById('bcvStatus').innerHTML = '✅ OK';
+          document.getElementById('bcvEuroStatus').innerHTML = '✅ OK';
+        } else {
+          document.getElementById('bcvStatus').innerHTML = '❌ Error';
+          document.getElementById('bcvEuroStatus').innerHTML = '❌ Error';
+        }
+
+        updateBrecha();
+        updateTimestamp();
+        updateCalcFromUSD();
+
+        // Notificar SIEMPRE que SUBA (sin cooldown)
+        maybeNotifyRateUp(prev);
+      } catch (err) {
+        console.error('Error:', err);
+      }
+    }
+
+    function updateBrecha() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const brecha = binanceAvg - currentData.bcv;
+      const brechaPercent = currentData.bcv ? (brecha / currentData.bcv) * 100 : 0;
+      document.getElementById('brechaValue').textContent = formatBs(brecha);
+      document.getElementById('brechaPercentage').textContent = brechaPercent.toFixed(2) + '%';
+      const fill = Math.max(0, Math.min(brechaPercent, 100));
+      document.getElementById('brechaFill').style.width = fill + '%';
+      document.getElementById('brechaFill').textContent = fill.toFixed(1) + '%';
+    }
+
+    function updateTimestamp() {
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('es-VE');
+      let countdown = 30;
+      const timer = setInterval(() => {
+        countdown--;
+        document.getElementById('nextUpdate').textContent = countdown;
+        if (countdown <= 0) clearInterval(timer);
+      }, 1000);
+    }
+
+    function updateCalcFromUSD() {
+      const val = Number(document.getElementById('calcUSD').value) || 0;
+      const type = document.getElementById('calcRate').value;
+      let rate = 0;
+      if (type === 'binance') rate = (currentData.binance_buy + currentData.binance_sell) / 2;
+      else if (type === 'euro') rate = currentData.euro;
+      else rate = currentData.bcv;
+      document.getElementById('calcResult').textContent = formatBs(val * rate);
+    }
+
+    function copyCalcResult() {
+      const text = `🧮 Conversión HW:\n${document.getElementById('calcUSD').value} unidades = ${document.getElementById('calcResult').textContent}\n\nVía P2P Price Tracker`;
+      navigator.clipboard.writeText(text);
+      alert('Copiado!');
+    }
+
+    function copyCurrentRate() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const text = `📊 Tasas HW actuales:\n🔸 Binance: ${formatBs(binanceAvg)}\n🏦 BCV USD: ${formatBs(currentData.bcv)}\n🇪🇺 BCV EUR: ${formatBs(currentData.euro)}\n\nVía P2P Price Tracker`;
+      navigator.clipboard.writeText(text);
+      alert('Tasas copiadas!');
+    }
+
+    function shareCurrentWhatsApp() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const text = `📊 Tasas HW actuales:\n🔸 Binance: ${formatBs(binanceAvg)}\n🏦 BCV USD: ${formatBs(currentData.bcv)}\n🇪🇺 BCV EUR: ${formatBs(currentData.euro)}\n\nVía P2P Price Tracker`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    }
+
+    function toggleNotifications() {
+      const btn = document.getElementById('notifBtn');
+      if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones'); return; }
+
+      if (notificationsEnabled) {
+        notificationsEnabled = false;
+        localStorage.setItem('notificationsEnabled', 'false');
+        btn.classList.remove('active');
+        btn.textContent = '🔔 Activar Notificaciones';
+      } else {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            notificationsEnabled = true;
+            localStorage.setItem('notificationsEnabled', 'true');
+            btn.classList.add('active');
+            btn.textContent = '🔕 Notificaciones ON';
+          }
+        });
+      }
+    }
+
+    function shouldSendScheduledUpdate() {
+      // Lunes(1), Miércoles(3), Viernes(5) en hora local
+      const now = new Date();
+      const day = now.getDay();
+      const allowed = (day === 1 || day === 3 || day === 5);
+      return allowed;
+    }
+
+    function maybeNotifyRateUp(prev) {
+      if (!notificationsEnabled) return;
+      if (Notification.permission !== 'granted') return;
+
+      // Si quieres SOLO L/M/V para “actualización de tasas”, activamos este filtro.
+      // Como pediste "puedes avisar si quieres los lunes y los miércoles y viernes la actualización de las tasas",
+      // lo dejo ACTIVO.
+      if (!shouldSendScheduledUpdate()) return;
+
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+
+      const changes = [];
+      if (binanceAvg > prev.binanceAvg && !approxEq(binanceAvg, prev.binanceAvg)) changes.push(`🔸 Binance subió a ${formatBs(binanceAvg)}`);
+      if (currentData.bcv > prev.bcv && !approxEq(currentData.bcv, prev.bcv)) changes.push(`🏦 BCV USD subió a ${formatBs(currentData.bcv)}`);
+      if (currentData.euro > prev.euro && !approxEq(currentData.euro, prev.euro)) changes.push(`🇪🇺 BCV EUR subió a ${formatBs(currentData.euro)}`);
+
+      if (!changes.length) return;
+
+      // Sin cooldown, pero evitamos repetir EXACTAMENTE el mismo paquete si el fetch devuelve lo mismo
+      const payload = { binanceAvg, bcv: currentData.bcv, euro: currentData.euro };
+      if (lastNotified && approxEq(lastNotified.binanceAvg, payload.binanceAvg) && approxEq(lastNotified.bcv, payload.bcv) && approxEq(lastNotified.euro, payload.euro)) {
+        return;
+      }
+
+      new Notification('📈 Subió la tasa', {
+        body: changes.join('\n')
+      });
+
+      lastNotified = payload;
+      localStorage.setItem('lastNotifiedRates', JSON.stringify(payload));
+    }
+
+    async function generateCapture() {
+      const captureArea = document.createElement('div');
+      captureArea.className = 'capture-area';
+      captureArea.innerHTML = `
+        <div style="text-align: center; border: 2px solid #3b82f6; padding: 20px; border-radius: 15px; background: #1e293b; color: white;">
+          <h2 style="color: #60a5fa; ">🔥 TASAS HW</h2>
+          <div style="font-size: 24px; color: #fbbf24; margin: 10px 0;">🔸 Binance: ${document.getElementById('binanceAvg').textContent}</div>
+          <div style="font-size: 24px; color: #94a3b8; margin: 10px 0;">🏦 BCV USD: ${document.getElementById('bcvRate').textContent}</div>
+          <div style="font-size: 24px; color: #10b981; margin: 10px 0;">🇪🇺 BCV EUR: ${document.getElementById('bcvEuro').textContent}</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 15px;">${new Date().toLocaleString()}</div>
+        </div>
+      `;
+      document.body.appendChild(captureArea);
+      const canvas = await html2canvas(captureArea);
+      const link = document.createElement('a');
+      link.download = `Tasas_HW_${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+      document.body.removeChild(captureArea);
+    }
+
+    window.addEventListener('load', () => {
+      const btn = document.getElementById('notifBtn');
+      if (notificationsEnabled && Notification.permission === 'granted') {
+        btn.classList.add('active');
+        btn.textContent = '🔕 Notificaciones ON';
+      }
+    });
+
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
