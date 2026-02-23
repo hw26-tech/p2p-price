@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1e293b">
+  <meta name="description" content="Comparador de tasas: Binance P2P vs Kontigo vs BCV en tiempo real">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e293b' width='192' height='192'/><text x='50%' y='50%' font-size='100' fill='%23fff' text-anchor='middle' dominant-baseline='middle' font-weight='bold'>₿</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e293b' width='192' height='192'/><text x='50%' y='50%' font-size='100' fill='%23fff' text-anchor='middle' dominant-baseline='middle' font-weight='bold'>₿</text></svg>">
+  
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <title>P2P Price Tracker - Binance vs Kontigo vs BCV</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 1rem;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .timestamp {
+      color: #64748b;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(148, 163, 184, 0.4);
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-primary {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+
+    .price-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .price-row:last-child {
+      border-bottom: none;
+    }
+
+    .price-label {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .price-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+      color: #10b981;
+    }
+
+    .status.error {
+      color: #ef4444;
+    }
+
+    .brecha-section {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .brecha-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .brecha-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-bottom: 0.5rem;
+    }
+
+    .brecha-percentage {
+      font-size: 1.5rem;
+      color: #34d399;
+      margin-bottom: 1rem;
+    }
+
+    .brecha-bar {
+      width: 100%;
+      height: 30px;
+      background: rgba(148, 163, 184, 0.1);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .brecha-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f97316);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .alert-section {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .alert-section.hidden {
+      display: none;
+    }
+
+    .alert-title {
+      color: #fca5a5;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .alert-input {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .alert-input input {
+      flex: 1;
+      padding: 0.5rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+
+    .alert-input input::placeholder {
+      color: #64748b;
+    }
+
+    .button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .button-primary {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      color: white;
+    }
+
+    .button-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .button-secondary {
+      background: rgba(148, 163, 184, 0.1);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .button-secondary:hover {
+      background: rgba(148, 163, 184, 0.2);
+    }
+
+    .button-small {
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+    }
+
+    .favorites {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .favorite-btn {
+      padding: 0.5rem 1rem;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 0.5rem;
+      color: #60a5fa;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .favorite-btn:hover {
+      background: rgba(59, 130, 246, 0.3);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .calculator {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .calculator-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .calc-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .calc-input {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .calc-input label {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .calc-input input,
+    .calc-input select {
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      font-size: 1rem;
+    }
+
+    .calc-input input::placeholder {
+      color: #64748b;
+    }
+
+    .calc-result {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .calc-result-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #10b981;
+    }
+
+    .chart-container {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .chart-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .share-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .share-btn {
+      padding: 0.5rem 1rem;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 0.5rem;
+      color: #60a5fa;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .share-btn:hover {
+      background: rgba(59, 130, 246, 0.3);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.75rem;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .calc-row {
+        grid-template-columns: 1fr;
+      }
+
+      .brecha-value {
+        font-size: 2rem;
+      }
+    }
+
+    .loading {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(148, 163, 184, 0.3);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .refresh-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .refresh-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+    }
+
+    .refresh-btn:active {
+      transform: scale(0.95);
+    }
+
+    .refresh-btn.loading {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Estilos Modo Kiosko */
+    body.kiosko-mode {
+      padding: 0;
+      background: #000;
+    }
+
+    .kiosko-mode header, 
+    .kiosko-mode .brecha-section, 
+    .kiosko-mode .alert-section, 
+    .kiosko-mode .calculator, 
+    .kiosko-mode .chart-container, 
+    .kiosko-mode footer {
+      display: none !important;
+    }
+
+    .kiosko-mode .container {
+      max-width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kiosko-mode .grid {
+      grid-template-columns: repeat(3, 1fr);
+      width: 95%;
+      gap: 2rem;
+    }
+
+    .kiosko-mode .card {
+      padding: 3rem 2rem;
+      background: rgba(30, 41, 59, 0.4);
+      border-width: 2px;
+    }
+
+    .kiosko-mode .price-value {
+      font-size: 4rem;
+    }
+
+    .kiosko-mode .card-title {
+      font-size: 2rem;
+    }
+
+    .kiosko-toggle {
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: #94a3b8;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      float: right;
+    }
+
+
+    /* Estilos Arbitraje y Sniper */
+    .arbitraje-card {
+      background: linear-gradient(135deg, #065f46, #064e3b);
+      border: 2px solid #10b981;
+      padding: 1rem;
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      display: none; /* Se muestra solo si hay ganancia */
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .sniper-alert {
+      animation: flash-red 0.5s infinite;
+      border: 2px solid #ef4444 !important;
+    }
+
+    @keyframes flash-red {
+      0% { background: rgba(239, 68, 68, 0.2); }
+      50% { background: rgba(239, 68, 68, 0.5); }
+      100% { background: rgba(239, 68, 68, 0.2); }
+    }
+
+    .capture-area {
+      padding: 20px;
+      background: #0f172a;
+      width: 400px;
+      position: fixed;
+      left: -9999px; /* Escondido */
+    }
+
+
+    .notif-btn {
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #c084fc;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      margin-left: 0.5rem;
+    }
+
+    .notif-btn:hover {
+      background: rgba(168, 85, 247, 0.3);
+    }
+
+    .notif-btn.active {
+      background: rgba(16, 185, 129, 0.3);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #10b981;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>💱 P2P Price Tracker <button class="kiosko-toggle" onclick="toggleKiosko()" title="Modo Kiosko">⛶</button> <button class="kiosko-toggle" onclick="generateCapture()" title="Generar Imagen para Estado">📸</button></h1>
+      <p class="subtitle">Binance P2P vs Kontigo vs BCV • Tasas en Bolívares (Bs)</p>
+      <p class="subtitle">Actualización automática cada 30 segundos <button class="notif-btn" id="notifBtn" onclick="toggleNotifications()">🔔 Activar Notificaciones</button></p>
+      <p class="timestamp">Última actualización: <span id="lastUpdate">—</span></p>
+      <p class="timestamp">Próxima actualización en: <span id="nextUpdate">—</span>s</p>
+    </header>
+
+    <!-- TARJETAS DE TASAS -->
+    
+    <!-- PANEL DE ARBITRAJE -->
+    <div id="arbitrajePanel" class="arbitraje-card">
+      <h3 style="color: #34d399;">💰 ¡OPORTUNIDAD DE ARBITRAJE!</h3>
+      <p id="arbitrajeMsg" style="font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0;"></p>
+      <p style="font-size: 0.8rem; opacity: 0.8;">Compra en Binance y vende en Kontigo para ganar.</p>
+    </div>
+
+    <div class="grid">
+      <!-- Binance -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 Binance P2P</span>
+          <span class="badge badge-primary">USDT ⇄ VES</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Compra:</span>
+          <span class="price-value" id="binanceBuy">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Venta:</span>
+          <span class="price-value" id="binanceSell">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Promedio:</span>
+          <span class="price-value" id="binanceAvg">—</span>
+        </div>
+        <p class="status" id="binanceStatus"><span class="loading"></span> Cargando...</p>
+      </div>
+
+      <!-- Kontigo -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🌐 Kontigo</span>
+          <span class="badge badge-success">Simulado</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Compra:</span>
+          <span class="price-value" id="kontigoBuy">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Venta:</span>
+          <span class="price-value" id="kontigoSell">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Promedio:</span>
+          <span class="price-value" id="kontigoAvg">—</span>
+        </div>
+        <p class="status" id="kontigoStatus"><span class="loading"></span> Cargando...</p>
+      </div>
+
+      <!-- BCV -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏦 BCV</span>
+          <span class="badge badge-warning">Oficial</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Tasa:</span>
+          <span class="price-value" id="bcvRate">—</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Fuente:</span>
+          <span style="color: #94a3b8; font-size: 0.9rem;">HW API</span>
+        </div>
+        <p class="status" id="bcvStatus"><span class="loading"></span> Cargando...</p>
+      </div>
+    </div>
+
+    <!-- BRECHA CAMBIARIA -->
+    <div class="brecha-section">
+      <div class="card-header">
+        <span class="brecha-title">📈 Brecha Cambiaria (Binance vs BCV)</span>
+      </div>
+      <div class="brecha-value" id="brechaValue">—</div>
+      <div class="brecha-percentage" id="brechaPercentage">—</div>
+      <div class="brecha-bar">
+        <div class="brecha-fill" id="brechaFill" style="width: 0%;">0%</div>
+      </div>
+      <p style="color: #94a3b8; font-size: 0.9rem;">(Binance más alto = brecha positiva)</p>
+    </div>
+
+    <!-- ALERTAS POR PRECIO -->
+    <div class="alert-section">
+      <div class="alert-title">🚨 Configurar Alerta por Precio (Binance)</div>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <input type="email" id="alertEmail" placeholder="Tu email" style="width: 100%; padding: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 0.5rem; color: #e2e8f0;">
+          <input type="number" id="alertThreshold" placeholder="Precio en Bs" style="width: 100%; padding: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 0.5rem; color: #e2e8f0;">
+        </div>
+        <button class="button button-primary" style="width: 100%;" onclick="setAlert()">Activar Alerta</button>
+      </div>
+      <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.75rem;">Recibirás un email cuando Binance supere el precio en Bs que indiques</p>
+      <p id="alertStatus" style="color: #10b981; font-size: 0.85rem; margin-top: 0.5rem;"></p>
+    </div>
+
+    <!-- MONTOS FAVORITOS -->
+    <div class="calculator">
+      <div class="calculator-title">⭐ Montos Favoritos</div>
+      <div class="favorites">
+        <button class="favorite-btn" onclick="setFavorite(10)">10 USD</button>
+        <button class="favorite-btn" onclick="setFavorite(50)">50 USD</button>
+        <button class="favorite-btn" onclick="setFavorite(100)">100 USD</button>
+        <button class="favorite-btn" onclick="setFavorite(500)">500 USD</button>
+        <button class="favorite-btn" onclick="setFavorite(1000)">1000 USD</button>
+      </div>
+    </div>
+
+    <!-- CALCULADORA -->
+    <div class="calculator">
+      <div class="calculator-title">🧮 Calculadora de Conversión</div>
+      <div class="calc-row">
+        <div class="calc-input">
+          <label>Tasa a usar:</label>
+          <select id="calcRate" onchange="updateCalcFromUSD()">
+            <option value="binance">Binance (promedio)</option>
+            <option value="kontigo">Kontigo (promedio)</option>
+            <option value="bcv">BCV</option>
+          </select>
+        </div>
+        <div class="calc-input">
+          <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="includeCommission" onchange="updateCalcFromUSD()" style="width: auto; cursor: pointer;">
+            <span>Incluir comisión</span>
+          </label>
+          <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">Binance: 1% | Kontigo: 1.5%</p>
+        </div>
+        <div class="calc-input">
+          <label>USD:</label>
+          <input type="number" id="calcUSD" placeholder="0" oninput="updateCalcFromUSD()">
+        </div>
+        <div class="calc-input">
+          <label>Bs:</label>
+          <input type="number" id="calcBS" placeholder="0" oninput="updateCalcFromBS()">
+        </div>
+      </div>
+      <div class="calc-result">
+        <p style="color: #94a3b8; margin-bottom: 0.5rem;">Resultado en Bs:</p>
+        <div class="calc-result-value" id="calcResult">0</div>
+      </div>
+      <div class="share-buttons">
+        <button class="share-btn" onclick="copyCalcResult()">📋 Copiar resultado</button>
+        <button class="share-btn" onclick="shareCalcWhatsApp()">💬 Compartir por WhatsApp</button>
+      </div>
+    </div>
+
+    <!-- GRÁFICO HISTÓRICO -->
+    <div class="chart-container">
+      
+      <div class="chart-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>📊 Histórico</span>
+        <div class="favorites" style="margin-bottom: 0;">
+          <button class="favorite-btn" style="font-size: 0.7rem; padding: 0.3rem 0.6rem;" onclick="loadHistory('1d')">Hoy</button>
+          <button class="favorite-btn" style="font-size: 0.7rem; padding: 0.3rem 0.6rem;" onclick="loadHistory('7d')">7D</button>
+          <button class="favorite-btn" style="font-size: 0.7rem; padding: 0.3rem 0.6rem;" onclick="loadHistory('30d')">30D</button>
+        </div>
+      </div>
+
+      <canvas id="priceChart"></canvas>
+    </div>
+
+    <!-- COMPARTIR TASA ACTUAL -->
+    <div class="calculator">
+      <div class="calculator-title">📤 Compartir Tasa Actual</div>
+      <div class="share-buttons">
+        <button class="share-btn" onclick="copyCurrentRate()">📋 Copiar tasas</button>
+        <button class="share-btn" onclick="shareCurrentWhatsApp()">💬 Compartir por WhatsApp</button>
+        <button class="share-btn" onclick="shareCurrentTwitter()">𝕏 Compartir en X</button>
+      </div>
+    </div>
+
+    <footer>
+      <p>Backend: @hwisintainer • PWA instalable • Datos en tiempo real</p>
+      <p style="margin-top: 1rem; color: #475569;">Hecho con ❤️ para Venezuela</p>
+    </footer>
+  </div>
+
+
+  <!-- BOTÓN DE ACTUALIZACIÓN FORZADA -->
+  <button class="refresh-btn" id="refreshBtn" onclick="forceRefresh()" title="Actualizar ahora">⚡</button>
+
+  <script>
+    let currentData = {
+      binance_buy: 0,
+      binance_sell: 0,
+      kontigo_buy: 0,
+      kontigo_sell: 0,
+      bcv: 0
+    };
+
+    let priceHistory = [];
+    let chart = null;
+    let alertConfig = {
+      email: localStorage.getItem('alertEmail') || '',
+      threshold: localStorage.getItem('alertThreshold') || 30,
+      lastAlertTime: 0
+    };
+
+    // Formatear Bs
+    function formatBs(value) {
+      if (value == null || isNaN(value)) return '—';
+      const n = Number(value);
+      return 'Bs ' + n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Cargar datos
+
+    // Función para fetch con tiempo límite (Timeout)
+    async function fetchWithTimeout(resource, options = {}) {
+      const { timeout = 8000 } = options;
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(resource, {
+          ...options,
+          signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+      } catch (error) {
+        clearTimeout(id);
+        throw error;
+      }
+    }
+
+    async function loadData() {
+      try {
+        const t = Date.now(); // CACHE BUSTER
+        const [binanceRes, kontigoRes, bcvRes] = await Promise.all([
+          fetch(`/api/binance_ves?t=${t}`, { cache: 'no-store' }),
+          fetch(`/api/kontigo_ves?t=${t}`, { cache: 'no-store' }),
+          fetch(`/api/bcv_ves?t=${t}`, { cache: 'no-store' })
+        ]);
+
+        const binance = await binanceRes.json();
+        const kontigo = await kontigoRes.json();
+        const bcv = await bcvRes.json();
+
+        if (binance.success) {
+          currentData.binance_buy = binance.buy || 0;
+          currentData.binance_sell = binance.sell || 0;
+          document.getElementById('binanceBuy').textContent = formatBs(binance.buy);
+          document.getElementById('binanceSell').textContent = formatBs(binance.sell);
+          const avg = (binance.buy + binance.sell) / 2;
+          document.getElementById('binanceAvg').textContent = formatBs(avg);
+          document.getElementById('binanceStatus').innerHTML = '✅ OK';
+        } else {
+          document.getElementById('binanceStatus').innerHTML = '❌ Error';
+        }
+
+        if (kontigo.success) {
+          currentData.kontigo_buy = kontigo.buy || 0;
+          currentData.kontigo_sell = kontigo.sell || 0;
+          document.getElementById('kontigoBuy').textContent = formatBs(kontigo.buy);
+          document.getElementById('kontigoSell').textContent = formatBs(kontigo.sell);
+          const avg = (kontigo.buy + kontigo.sell) / 2;
+          document.getElementById('kontigoAvg').textContent = formatBs(avg);
+          document.getElementById('kontigoStatus').innerHTML = '✅ Simulado';
+        } else {
+          document.getElementById('kontigoStatus').innerHTML = '❌ Error';
+        }
+
+        if (bcv.success) {
+          currentData.bcv = bcv.rate || 0;
+          document.getElementById('bcvRate').textContent = formatBs(bcv.rate);
+          document.getElementById('bcvStatus').innerHTML = '✅ OK';
+        } else {
+          document.getElementById('bcvStatus').innerHTML = '❌ Error';
+        }
+
+        updateBrecha();
+        checkArbitraje();
+        checkSniper();
+        updateTimestamp();
+        saveToHistory();
+        checkAlert();
+      } catch (err) {
+        console.error('Error loading data:', err);
+      }
+    }
+
+    // Calcular brecha
+    function updateBrecha() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const brecha = binanceAvg - currentData.bcv;
+      const brechaPercent = (brecha / currentData.bcv) * 100;
+
+      document.getElementById('brechaValue').textContent = formatBs(brecha);
+      document.getElementById('brechaPercentage').textContent = brechaPercent.toFixed(2) + '%';
+
+      const fillPercent = Math.min(brechaPercent, 100);
+      document.getElementById('brechaFill').style.width = fillPercent + '%';
+      document.getElementById('brechaFill').textContent = fillPercent.toFixed(1) + '%';
+
+      currentData.brecha = brechaPercent;
+    }
+
+    // Timestamp
+    function updateTimestamp() {
+      const now = new Date();
+      document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('es-VE');
+
+      const nextUpdate = new Date(now.getTime() + 30000);
+      let countdown = 30;
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) clearInterval(countdownInterval);
+        document.getElementById('nextUpdate').textContent = countdown;
+      }, 1000);
+    }
+
+    // Guardar histórico
+    async function saveToHistory() {
+      try {
+        await fetchWithTimeout('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            binance_buy: currentData.binance_buy,
+            binance_sell: currentData.binance_sell,
+            bcv: currentData.bcv,
+            kontigo_buy: currentData.kontigo_buy,
+            kontigo_sell: currentData.kontigo_sell,
+            brecha: currentData.brecha
+          })
+        });
+      } catch (err) {
+        console.error('Error saving history:', err);
+      }
+    }
+
+    // Cargar histórico para gráfico
+    async function loadHistory(range = '1d') {
+      console.log('Cargando historial:', range);
+      try {
+        const t = Date.now();
+        const res = await fetchWithTimeout(`/api/history?range=${range}&t=${t}`);
+        const data = await res.json();
+        if (data.success && data.history && Array.isArray(data.history) && data.history.length > 0) {
+          priceHistory = data.history;
+          console.log(`Historial cargado: ${data.history.length} puntos`);
+          updateChart();
+        } else {
+          console.warn('No hay datos de historial');
+          priceHistory = [];
+          updateChart();
+        }
+      } catch (e) {
+        console.error('Error cargando historial:', e);
+        priceHistory = [];
+        updateChart();
+      }
+    }
+
+    // Actualizar gráfico
+    function updateChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+
+      const labels = priceHistory.map(h => {
+        const d = new Date(h.timestamp);
+        return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+      });
+
+      const binanceData = priceHistory.map(h => (h.binance_buy + h.binance_sell) / 2);
+      const bcvData = priceHistory.map(h => h.bcv);
+      const brechaData = priceHistory.map(h => h.brecha);
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '📊 Binance P2P',
+              data: binanceData,
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251, 191, 36, 0.2)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: '🏦 BCV Oficial',
+              data: bcvData,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.2)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 4,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { 
+                color: '#e2e8f0',
+                font: { size: 14, weight: 'bold' },
+                padding: 15
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(148, 163, 184, 0.3)',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true
+            }
+          },
+          scales: {
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              ticks: { 
+                color: '#94a3b8',
+                font: { size: 12 },
+                callback: function(value) {
+                  return 'Bs ' + value.toFixed(2);
+                }
+              },
+              grid: { color: 'rgba(148, 163, 184, 0.1)' }
+            },
+            x: {
+              ticks: { 
+                color: '#94a3b8',
+                font: { size: 11 }
+              },
+              grid: { color: 'rgba(148, 163, 184, 0.1)' }
+            }
+          }
+        }
+      });
+    }
+
+    // Alertas por brecha
+    async function setAlert() {
+      const email = document.getElementById('alertEmail').value;
+      const threshold = document.getElementById('alertThreshold').value;
+
+      if (!email || !threshold) {
+        alert('Por favor completa email y brecha %');
+        return;
+      }
+
+      alertConfig.email = email;
+      alertConfig.threshold = threshold;
+      localStorage.setItem('alertEmail', email);
+      localStorage.setItem('alertThreshold', threshold);
+
+      document.getElementById('alertStatus').textContent = `✅ Avisaremos a ${email} cuando Binance supere ${formatBs(threshold)}`;
+    }
+
+    async function checkAlert() {
+      if (!alertConfig.email || !alertConfig.threshold) return;
+
+      const now = Date.now();
+      if (now - alertConfig.lastAlertTime < 30000) return; // Máximo 1 alerta cada 5 min
+
+      if (currentData.brecha > alertConfig.threshold) {
+        try {
+          await fetchWithTimeout('/api/send_alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: alertConfig.email,
+              brecha: currentData.brecha,
+              binance: (currentData.binance_buy + currentData.binance_sell) / 2,
+              bcv: currentData.bcv
+            })
+          });
+          alertConfig.lastAlertTime = now;
+          sendNotification(
+            '🚨 ALERTA DE PRECIO',
+            `Binance ha superado tu umbral: ${formatBs((currentData.binance_buy + currentData.binance_sell) / 2)}`,
+            'threshold'
+          );
+        } catch (err) {
+          console.error('Error sending alert:', err);
+        }
+      }
+    }
+
+    // Montos favoritos
+    function setFavorite(usd) {
+      document.getElementById('calcUSD').value = usd;
+      updateCalcFromUSD();
+    }
+
+    // Calculadora Bidireccional con Comisiones
+    function updateCalcFromUSD() {
+      const usd = Number(document.getElementById('calcUSD').value) || 0;
+      const rateType = document.getElementById('calcRate').value;
+      const includeCommission = document.getElementById('includeCommission').checked;
+
+      let rate = 0;
+      let commission = 0;
+
+      if (rateType === 'binance') {
+        rate = (currentData.binance_buy + currentData.binance_sell) / 2;
+        commission = includeCommission ? 0.01 : 0; // 1%
+      } else if (rateType === 'kontigo') {
+        rate = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+        commission = includeCommission ? 0.015 : 0; // 1.5%
+      } else {
+        rate = currentData.bcv;
+        commission = 0; // BCV no tiene comisión
+      }
+
+      const result = usd * rate * (1 - commission);
+      document.getElementById('calcResult').textContent = formatBs(result);
+      document.getElementById('calcBS').value = result.toFixed(2);
+    }
+
+    function updateCalcFromBS() {
+      const bs = Number(document.getElementById('calcBS').value) || 0;
+      const rateType = document.getElementById('calcRate').value;
+      const includeCommission = document.getElementById('includeCommission').checked;
+
+      let rate = 0;
+      let commission = 0;
+
+      if (rateType === 'binance') {
+        rate = (currentData.binance_buy + currentData.binance_sell) / 2;
+        commission = includeCommission ? 0.01 : 0;
+      } else if (rateType === 'kontigo') {
+        rate = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+        commission = includeCommission ? 0.015 : 0;
+      } else {
+        rate = currentData.bcv;
+        commission = 0;
+      }
+
+      const usd = bs / (rate * (1 - commission));
+      document.getElementById('calcUSD').value = usd.toFixed(2);
+      document.getElementById('calcResult').textContent = formatBs(bs);
+    }
+
+    // Compartir
+    function copyCalcResult() {
+      const usd = Number(document.getElementById('calcUSD').value) || 0;
+      const bs = document.getElementById('calcBS').value || 0;
+      const rateType = document.getElementById('calcRate').value;
+
+      let rateName = rateType === 'binance' ? 'Binance' : rateType === 'kontigo' ? 'Kontigo' : 'BCV';
+      let rate = 0;
+
+      if (rateType === 'binance') {
+        rate = (currentData.binance_buy + currentData.binance_sell) / 2;
+      } else if (rateType === 'kontigo') {
+        rate = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+      } else {
+        rate = currentData.bcv;
+      }
+
+      const text = `🧮 Conversión:\nTasa usada: ${rateName} = ${formatBs(rate)}\nMonto: $${usd} = Bs ${Number(bs).toLocaleString('es-VE')}\n\nVía P2P Price Tracker`;
+      navigator.clipboard.writeText(text);
+      alert('Resultado copiado!');
+    }
+
+    function shareCalcWhatsApp() {
+      const usd = document.getElementById('calcUSD').value;
+      const result = document.getElementById('calcResult').textContent;
+      const text = `💱 $${usd} USD = $${result}\n\nVía P2P Price Tracker`;
+      const url = `https://wa.me/?text=$${encodeURIComponent(text)}`;
+      window.open(url);
+    }
+
+    function copyCurrentRate() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const kontigoAvg = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+      const text = `📊 Tasas actuales:\n🔸 Binance: ${formatBs(binanceAvg)}\n🔹 Kontigo: ${formatBs(kontigoAvg)}\n🏦 BCV: ${formatBs(currentData.bcv)}\n\nVía P2P Price Tracker`;
+      navigator.clipboard.writeText(text);
+      alert('Tasas copiadas!');
+    }
+
+    function shareCurrentWhatsApp() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const kontigoAvg = (currentData.kontigo_buy + currentData.kontigo_sell) / 2;
+      const text = `📊 Tasas actuales:\n🔸 Binance: ${formatBs(binanceAvg)}\n🔹 Kontigo: ${formatBs(kontigoAvg)}\n🏦 BCV: ${formatBs(currentData.bcv)}\n\nVía P2P Price Tracker`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(url);
+    }
+
+    function shareCurrentTwitter() {
+      const binanceAvg = (currentData.binance_buy + currentData.binance_sell) / 2;
+      const text = `📊 Tasas en tiempo real:\n💱 Binance: $${formatBs(binanceAvg)}\n🏦 BCV: $${formatBs(currentData.bcv)}\n📈 Brecha: $${currentData.brecha.toFixed(2)}%\n\n#Venezuela #Dolar #Binance`;
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+      window.open(url);
+    }
+
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+    }
+
+
+
+    // Sistema de Notificaciones Push
+    let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+    let lastNotificationTime = {
+      arbitraje: 0,
+      sniper: 0,
+      threshold: 0
+    };
+
+    function toggleNotifications() {
+      const btn = document.getElementById('notifBtn');
+
+      if (!('Notification' in window)) {
+        alert('Tu navegador no soporta notificaciones 😢');
+        return;
+      }
+
+      if (notificationsEnabled) {
+        // Desactivar
+        notificationsEnabled = false;
+        localStorage.setItem('notificationsEnabled', 'false');
+        btn.classList.remove('active');
+        btn.textContent = '🔔 Activar Notificaciones';
+      } else {
+        // Activar - pedir permiso
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            notificationsEnabled = true;
+            localStorage.setItem('notificationsEnabled', 'true');
+            btn.classList.add('active');
+            btn.textContent = '🔕 Notificaciones ON';
+
+            // Notificación de prueba
+            new Notification('¡Notificaciones activadas!', {
+              body: 'Ahora te avisaremos de oportunidades y alertas de precio',
+              icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">💰</text></svg>'
+            });
+          } else {
+            alert('Necesitas dar permiso para recibir notificaciones');
+          }
+        });
+      }
+    }
+
+    function sendNotification(title, body, type = 'info') {
+      if (!notificationsEnabled) return;
+
+      const now = Date.now();
+      // Evitar spam: máximo 1 notificación del mismo tipo cada 5 minutos
+      if (now - lastNotificationTime[type] < 30000) return;
+
+      const icons = {
+        arbitraje: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">💰</text></svg>',
+        sniper: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🎯</text></svg>',
+        threshold: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🚨</text></svg>'
+      };
+
+      new Notification(title, {
+        body: body,
+        icon: icons[type] || icons.info,
+        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">₿</text></svg>',
+        requireInteraction: true // La notificación no se cierra sola
+      });
+
+      lastNotificationTime[type] = now;
+    }
+
+    // Inicializar botón de notificaciones
+    window.addEventListener('load', () => {
+      const btn = document.getElementById('notifBtn');
+      if (notificationsEnabled && Notification.permission === 'granted') {
+        btn.classList.add('active');
+        btn.textContent = '🔕 Notificaciones ON';
+      }
+    });
+
+    // Sonido de caja registradora
+    const cashSound = new Audio('https://www.myinstants.com/media/sounds/cash-register-purchase.mp3');
+
+    function checkArbitraje() {
+      const binanceBuy = currentData.binance_buy;
+      const kontigoSell = currentData.kontigo_sell;
+
+      if (binanceBuy > 0 && kontigoSell > 0) {
+        const profit = kontigoSell - binanceBuy;
+        const profitPercent = (profit / binanceBuy) * 100;
+
+        const panel = document.getElementById('arbitrajePanel');
+        if (profitPercent > 0.5) { // Si la ganancia es mayor al 0.5%
+          panel.style.display = 'block';
+          document.getElementById('arbitrajeMsg').textContent = `Ganancia neta: ${profitPercent.toFixed(2)}% (Bs ${profit.toFixed(2)} por $)`;
+          if (profitPercent > 1.5) {
+            cashSound.play();
+            sendNotification(
+              '💰 ¡OPORTUNIDAD DE ARBITRAJE!',
+              `Ganancia de ${profitPercent.toFixed(2)}% comprando en Binance y vendiendo en Kontigo`,
+              'arbitraje'
+            );
+          }
+        } else {
+          panel.style.display = 'none';
+        }
+      }
+    }
+
+    function checkSniper() {
+      const binanceCard = document.querySelector('.card'); // La primera es Binance
+      const avg = (currentData.binance_buy + currentData.binance_sell) / 2;
+
+      // Si el precio de compra es 1% menor al promedio, es una ganga
+      if (currentData.binance_buy < (avg * 0.99)) {
+        binanceCard.classList.add('sniper-alert');
+        sendNotification(
+          '🎯 ¡GANGA DETECTADA!',
+          `Precio de compra en Binance está ${formatBs(currentData.binance_buy)} - ¡Por debajo del promedio!`,
+          'sniper'
+        );
+      } else {
+        binanceCard.classList.remove('sniper-alert');
+      }
+    }
+
+    async function generateCapture() {
+      const captureArea = document.createElement('div');
+      captureArea.className = 'capture-area';
+      captureArea.innerHTML = `
+        <div style="text-align: center; border: 2px solid #3b82f6; padding: 20px; border-radius: 15px; background: #1e293b;">
+          <h2 style="color: #60a5fa; margin-bottom: 15px;">🔥 TASAS HW DEL MOMENTO</h2>
+          <div style="margin-bottom: 10px; font-size: 24px; color: #fbbf24;">🔸 Binance: ${document.getElementById('binanceAvg').textContent}</div>
+          <div style="margin-bottom: 10px; font-size: 24px; color: #10b981;">🔹 Kontigo: ${document.getElementById('kontigoAvg').textContent}</div>
+          <div style="margin-bottom: 10px; font-size: 24px; color: #94a3b8;">🏦 BCV: ${document.getElementById('bcvRate').textContent}</div>
+          <hr style="border: 0; border-top: 1px solid #475569; margin: 15px 0;">
+          <div style="font-size: 14px; color: #64748b;">Actualizado: ${new Date().toLocaleTimeString()}</div>
+          <div style="font-size: 12px; color: #3b82f6; margin-top: 5px;">p2p-price.vercel.app</div>
+        </div>
+      `;
+      document.body.appendChild(captureArea);
+
+      const canvas = await html2canvas(captureArea);
+      const image = canvas.toDataURL("image/png");
+      const link = document.createElement('a');
+      link.download = `Tasas_HW_${Date.now()}.png`;
+      link.href = image;
+      link.click();
+      document.body.removeChild(captureArea);
+    }
+
+    function toggleKiosko() {
+      document.body.classList.toggle('kiosko-mode');
+      if(document.body.classList.contains('kiosko-mode')) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      } else {
+        if(document.fullscreenElement) document.exitFullscreen();
+      }
+    }
+
+    // Actualización forzada
+    async function forceRefresh() {
+      const btn = document.getElementById('refreshBtn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      await loadData();
+      await loadHistory();
+
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }, 1000);
+    }
+
+    // Iniciar
+    loadData();
+    loadHistory();
+    setInterval(loadData, 30000);
+    setInterval(loadHistory, 60000);
+  </script>
+</body>
+</html>
