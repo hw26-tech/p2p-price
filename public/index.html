@@ -49,7 +49,7 @@
     .calc-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center; }
     .calc-left { display: flex; flex-direction: column; gap: 0.6rem; }
     .calc-left label { font-size: 0.7rem; color: #64748b; font-weight: 600; }
-    .calc-left select {
+    .calc-left select, .calc-left input {
       width: 100%; padding: 0.65rem 0.75rem;
       background: #020617; border: 1px solid #334155;
       border-radius: 0.75rem; color: #fff; font-size: 0.9rem; outline: none;
@@ -115,7 +115,9 @@
             <option value="binance">Binance Promedio</option>
             <option value="bcv">BCV Dólar</option>
             <option value="euro">BCV Euro</option>
+            <option value="custom">Personalizada</option>
           </select>
+          <input type="number" id="customRateInput" placeholder="Tasa Bs" style="display:none; margin-top: 0.5rem;" oninput="recalculate()" step="0.01">
         </div>
         <div class="calc-result-box">
           <div class="res-label" id="calcResLabel">Resultado</div>
@@ -176,7 +178,7 @@
 
 <script>
   let cur = { binBuy:0, binSell:0, bcv:0, euro:0 };
-  let lastMode = 'usd'; // Para saber qué campo estaba usando el usuario
+  let lastMode = 'usd';
   let notifOn = localStorage.getItem('notifOn') === 'true';
   let timer = null;
 
@@ -198,14 +200,26 @@
   }
 
   function getRate() {
-    const t = document.getElementById('calcRate').value;
-    if (t==='binance') return (cur.binBuy+cur.binSell)/2;
-    if (t==='euro') return cur.euro;
+    const sel = document.getElementById('calcRate').value;
+    if (sel === 'custom') {
+      const val = parseFloat(document.getElementById('customRateInput').value);
+      return isNaN(val) ? 0 : val;
+    }
+    if (sel === 'binance') return (cur.binBuy + cur.binSell) / 2;
+    if (sel === 'euro') return cur.euro;
     return cur.bcv;
   }
 
-  // Esta función se dispara cuando cambias el SELECT de tasa
   function recalculate() {
+    const sel = document.getElementById('calcRate').value;
+    const customInput = document.getElementById('customRateInput');
+    
+    if (sel === 'custom') {
+      customInput.style.display = 'block';
+    } else {
+      customInput.style.display = 'none';
+    }
+
     if (lastMode === 'usd') calcFromUSD();
     else calcFromBS();
   }
@@ -265,7 +279,7 @@
         setStatus('dotBCV','lblBCV', true);
       } else { setStatus('dotBCV','lblBCV', false); }
 
-      recalculate(); // Actualizar calculadora con nuevos precios si hay algo escrito
+      recalculate();
 
       const avg = (cur.binBuy+cur.binSell)/2;
       const diff = avg - cur.bcv;
