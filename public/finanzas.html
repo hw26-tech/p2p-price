@@ -43,10 +43,10 @@
     .dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    /* Tasa box */
-    .rate-box { display: flex; justify-content: space-between; align-items: center; }
-    .rate-val { font-size: 1.6rem; font-weight: 800; color: #3b82f6; font-variant-numeric: tabular-nums; }
-    .rate-sub { font-size: 0.7rem; color: #64748b; }
+    /* Tasas */
+    .rate-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; }
+    .rate-label { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
+    .rate-value { font-size: 1.1rem; font-weight: 700; color: #3b82f6; font-variant-numeric: tabular-nums; }
 
     /* Resumen */
     .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -103,11 +103,12 @@
     /* Add debt form */
     .add-form { display: flex; flex-direction: column; gap: 0.6rem; }
     .add-row { display: flex; gap: 0.5rem; }
-    .add-form input {
+    .add-form input, .add-form select {
       width: 100%; padding: 0.65rem 0.75rem; background: #020617; border: 1px solid #334155;
       border-radius: 0.75rem; color: #fff; font-size: 0.9rem; outline: none; min-width: 0;
     }
-    .add-form input:focus { border-color: #3b82f6; }
+    .add-form input:focus, .add-form select:focus { border-color: #3b82f6; }
+    .add-form select option { background: #0f172a; color: #fff; }
     .btn-primary {
       width: 100%; padding: 0.7rem; border-radius: 0.75rem; border: none;
       background: #3b82f6; color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;
@@ -140,19 +141,27 @@
     <p class="subtitle">Gestión privada • Deudas y ahorro</p>
   </div>
 
-  <!-- Tasa Binance -->
+  <!-- Tasas -->
   <div class="card">
     <div class="card-header">
-      <div class="section-title">Tasa Binance P2P</div>
+      <div class="section-title">Tasas de Cambio</div>
       <div class="status-dot"><div class="dot loading" id="dotRate"></div><span id="lblRate">Cargando...</span></div>
     </div>
-    <div class="rate-box">
-      <div>
-        <div class="rate-val" id="rateVal">—</div>
-        <div class="rate-sub">Promedio compra/venta • por USD</div>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <div class="rate-row">
+        <span class="rate-label">Binance P2P (USD)</span>
+        <span class="rate-value" id="rateBinanceUSD">—</span>
       </div>
-      <button class="logout-btn" style="position:static;border-color:#334155;color:#3b82f6;" onclick="refreshRate()">⚡ Actualizar</button>
+      <div class="rate-row">
+        <span class="rate-label">BCV Dólar</span>
+        <span class="rate-value" id="rateBcvUSD">—</span>
+      </div>
+      <div class="rate-row">
+        <span class="rate-label">BCV Euro</span>
+        <span class="rate-value" id="rateBcvEUR">—</span>
+      </div>
     </div>
+    <button class="logout-btn" style="margin-top:0.8rem;width:100%;border-color:#334155;color:#3b82f6;" onclick="refreshRates()">⚡ Actualizar tasas</button>
   </div>
 
   <!-- Resumen -->
@@ -187,6 +196,17 @@
         <input type="number" id="newDebtUSD" placeholder="Monto en USD" step="0.01" min="0">
         <input type="text" id="newDebtNote" placeholder="Nota (opcional)">
       </div>
+      <div class="add-row">
+        <select id="newDebtTasa">
+          <option value="binance_usd">Binance P2P (USD)</option>
+          <option value="bcv_usd">BCV Dólar</option>
+          <option value="bcv_eur">BCV Euro</option>
+        </select>
+        <select id="newDebtMoneda">
+          <option value="usd">Solo en dólares</option>
+          <option value="bs">También en Bs</option>
+        </select>
+      </div>
       <button class="btn-primary" onclick="addDebt()">+ Agregar deuda</button>
     </div>
   </div>
@@ -217,8 +237,14 @@
 <script>
   const TOKEN_KEY = 'finanzas_token';
   const DATA_KEY = 'finanzas_data';
-  let rate = 0;              // tasa Binance promedio (Bs por USD)
-  let rateOk = false;
+  
+  // Tasas de cambio
+  let rates = {
+    binance_usd: 0,
+    bcv_usd: 0,
+    bcv_eur: 0
+  };
+  let ratesOk = false;
   let data = null;
   let rateTimer = null;
 
@@ -245,8 +271,24 @@
   function seedData() {
     return {
       debts: [
-        { id: id(), acreedor: 'Hermana', montoUSD: 200, nota: 'USDT Binance', payments: [] },
-        { id: id(), acreedor: 'Ubii Créditos', montoUSD: 25.83, nota: '', payments: [] }
+        { 
+          id: id(), 
+          acreedor: 'Hermana', 
+          montoUSD: 200, 
+          nota: 'USDT Binance', 
+          tasa: 'binance_usd',
+          moneda: 'usd',
+          payments: [] 
+        },
+        { 
+          id: id(), 
+          acreedor: 'Ubii Créditos', 
+          montoUSD: 25.83, 
+          nota: '', 
+          tasa: 'bcv_usd',
+          moneda: 'usd',
+          payments: [] 
+        }
       ],
       savings: { metaUSD: 500, deposits: [] }
     };
@@ -273,15 +315,34 @@
     if (v === null || v === undefined || isNaN(v)) return '$ —';
     return '$\u00A0' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  function fmtEUR(v) {
+    if (v === null || v === undefined || isNaN(v)) return '€ —';
+    return '€\u00A0' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
   function fmtBs(v) {
-    if (!rateOk || v === null || v === undefined || isNaN(v)) return 'Bs —';
+    if (!ratesOk || v === null || v === undefined || isNaN(v)) return 'Bs —';
     return 'Bs\u00A0' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  function toBs(usd) { return usd * rate; }
+  function toBs(usd, tasaType) {
+    const rate = rates[tasaType] || rates.binance_usd;
+    return usd * rate;
+  }
+  function toUSD(bs, tasaType) {
+    const rate = rates[tasaType] || rates.binance_usd;
+    return rate > 0 ? bs / rate : 0;
+  }
   function fmtDate(iso) {
     const d = new Date(iso);
     return d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
            ' ' + d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+  }
+  function getTasaLabel(tasaType) {
+    const labels = {
+      binance_usd: 'Binance USD',
+      bcv_usd: 'BCV $',
+      bcv_eur: 'BCV €'
+    };
+    return labels[tasaType] || tasaType;
   }
 
   /* ---------- DEBT CALCS ---------- */
@@ -290,23 +351,47 @@
   function totalPending() { return data.debts.reduce((s, d) => s + debtPending(d), 0); }
   function totalSavings() { return data.savings.deposits.reduce((s, p) => s + Number(p.montoUSD || 0), 0); }
 
-  /* ---------- RATE ---------- */
-  async function refreshRate() {
+  /* ---------- RATES ---------- */
+  async function refreshRates() {
     setRateStatus('loading');
     try {
-      const r = await fetch('/api/binance_ves?t=' + Date.now(), { cache: 'no-store' });
-      const d = await r.json();
-      if (d.success && (d.buy || d.sell)) {
-        const vals = [d.buy, d.sell].filter(x => x);
-        rate = vals.reduce((a, b) => a + b, 0) / vals.length;
-        rateOk = true;
-        document.getElementById('rateVal').textContent = fmtBs(rate);
+      // Fetch en paralelo
+      const [binanceRes, bcvRes] = await Promise.all([
+        fetch('/api/binance_ves?t=' + Date.now(), { cache: 'no-store' }),
+        fetch('/api/bcv_ves?t=' + Date.now(), { cache: 'no-store' })
+      ]);
+
+      const binanceData = await binanceRes.json();
+      const bcvData = await bcvRes.json();
+
+      let success = false;
+
+      // Binance USD
+      if (binanceData.success && (binanceData.buy || binanceData.sell)) {
+        const vals = [binanceData.buy, binanceData.sell].filter(x => x);
+        rates.binance_usd = vals.reduce((a, b) => a + b, 0) / vals.length;
+        success = true;
+      }
+
+      // BCV USD y EUR
+      if (bcvData.success && bcvData.rate) {
+        rates.bcv_usd = bcvData.rate;
+        rates.bcv_eur = bcvData.euro || 0;
+        success = true;
+      }
+
+      if (success) {
+        ratesOk = true;
+        document.getElementById('rateBinanceUSD').textContent = fmtBs(rates.binance_usd);
+        document.getElementById('rateBcvUSD').textContent = fmtBs(rates.bcv_usd);
+        document.getElementById('rateBcvEUR').textContent = fmtBs(rates.bcv_eur);
         document.getElementById('lastUpd').textContent = new Date().toLocaleTimeString('es-VE');
         setRateStatus('ok');
       } else {
         setRateStatus('error');
       }
     } catch (e) {
+      console.error('Error loading rates:', e);
       setRateStatus('error');
     }
     render();
@@ -316,7 +401,7 @@
     const dot = document.getElementById('dotRate');
     const lbl = document.getElementById('lblRate');
     dot.className = 'dot ' + state;
-    lbl.textContent = state === 'ok' ? 'En línea' : state === 'loading' ? 'Cargando...' : 'Sin datos';
+    lbl.textContent = state === 'ok' ? 'Actualizado' : state === 'loading' ? 'Cargando...' : 'Error';
   }
 
   /* ---------- RENDER ---------- */
@@ -329,10 +414,18 @@
   function renderSummary() {
     const debt = totalPending();
     const save = totalSavings();
+    
+    // Deuda total en Bs (suma de cada deuda con su tasa específica)
+    const debtBs = data.debts.reduce((total, d) => {
+      const pending = debtPending(d);
+      return total + toBs(pending, d.tasa || 'binance_usd');
+    }, 0);
+    
     document.getElementById('sumDebtUSD').textContent = fmtUSD(debt);
-    document.getElementById('sumDebtBS').textContent = fmtBs(toBs(debt));
+    document.getElementById('sumDebtBS').textContent = fmtBs(debtBs);
     document.getElementById('sumSaveUSD').textContent = fmtUSD(save);
-    document.getElementById('sumSaveBS').textContent = fmtBs(toBs(save));
+    // Ahorro usa tasa paralelo (Binance)
+    document.getElementById('sumSaveBS').textContent = fmtBs(toBs(save, 'binance_usd'));
   }
 
   function renderDebts() {
@@ -347,25 +440,40 @@
       const monto = Number(debt.montoUSD);
       const pct = monto > 0 ? Math.min(100, (paid / monto) * 100) : 0;
       const isPaid = pending <= 0.0001;
+      const tasaType = debt.tasa || 'binance_usd';
+      const moneda = debt.moneda || 'usd';
 
       const paymentsHtml = debt.payments.length
-        ? debt.payments.slice().reverse().map(p => `
+        ? debt.payments.slice().reverse().map(p => {
+            const showBs = p.montoBs ? `<span class="pay-bs">(${fmtBs(p.montoBs)} pagado)</span>` : `<span class="pay-bs">${fmtBs(toBs(p.montoUSD, tasaType))}</span>`;
+            return `
             <div class="pay-row">
               <span class="pay-date">${fmtDate(p.fecha)}</span>
               <span>
                 <span class="pay-amt">${fmtUSD(p.montoUSD)}</span>
-                <span class="pay-bs">${fmtBs(toBs(p.montoUSD))}</span>
+                ${showBs}
                 <button class="pay-del" onclick="deletePayment('${debt.id}','${p.id}')">✕</button>
               </span>
-            </div>`).join('')
+            </div>`}).join('')
         : '<div class="no-pay">Sin abonos aún</div>';
+
+      const abonoFormHtml = moneda === 'bs' ? `
+        <div class="abono-form">
+          <input type="number" id="abono-usd-${debt.id}" placeholder="Abono USD" step="0.01" min="0">
+          <input type="number" id="abono-bs-${debt.id}" placeholder="o en Bs" step="0.01" min="0">
+          <button onclick="addPayment('${debt.id}')">+ Abonar</button>
+        </div>` : `
+        <div class="abono-form">
+          <input type="number" id="abono-usd-${debt.id}" placeholder="Abono (USD)" step="0.01" min="0">
+          <button onclick="addPayment('${debt.id}')">+ Abonar</button>
+        </div>`;
 
       return `
         <div class="debt">
           <div class="debt-top">
             <div>
               <div class="debt-name">${escapeHtml(debt.acreedor)}</div>
-              ${debt.nota ? `<div class="debt-note">${escapeHtml(debt.nota)}</div>` : ''}
+              <div class="debt-note">${getTasaLabel(tasaType)}${debt.nota ? ' • ' + escapeHtml(debt.nota) : ''}</div>
             </div>
             <button class="debt-del" title="Eliminar deuda" onclick="deleteDebt('${debt.id}')">🗑️</button>
           </div>
@@ -373,15 +481,15 @@
           <div class="debt-rows">
             <div class="d-row">
               <span class="dr-label">Monto total</span>
-              <span><span class="dr-usd">${fmtUSD(monto)}</span><span class="dr-bs">${fmtBs(toBs(monto))}</span></span>
+              <span><span class="dr-usd">${fmtUSD(monto)}</span><span class="dr-bs">${fmtBs(toBs(monto, tasaType))}</span></span>
             </div>
             <div class="d-row">
               <span class="dr-label">Abonado</span>
-              <span><span class="dr-usd">${fmtUSD(paid)}</span><span class="dr-bs">${fmtBs(toBs(paid))}</span></span>
+              <span><span class="dr-usd">${fmtUSD(paid)}</span><span class="dr-bs">${fmtBs(toBs(paid, tasaType))}</span></span>
             </div>
             <div class="d-row ${isPaid ? 'paid-off' : 'pending'}">
               <span class="dr-label">${isPaid ? 'Saldado ✅' : 'Saldo pendiente'}</span>
-              <span><span class="dr-usd">${fmtUSD(pending)}</span><span class="dr-bs">${fmtBs(toBs(pending))}</span></span>
+              <span><span class="dr-usd">${fmtUSD(pending)}</span><span class="dr-bs">${fmtBs(toBs(pending, tasaType))}</span></span>
             </div>
           </div>
 
@@ -393,10 +501,7 @@
             ${paymentsHtml}
           </div>
 
-          <div class="abono-form">
-            <input type="number" id="abono-${debt.id}" placeholder="Abono (USD)" step="0.01" min="0">
-            <button onclick="addPayment('${debt.id}')">+ Abonar</button>
-          </div>
+          ${abonoFormHtml}
         </div>`;
     }).join('');
   }
@@ -405,21 +510,23 @@
     const save = totalSavings();
     const goal = Number(data.savings.metaUSD) || 500;
     const pct = goal > 0 ? Math.min(100, (save / goal) * 100) : 0;
+    const tasaType = 'binance_usd'; // Ahorro usa tasa paralelo (Binance)
+    
     document.getElementById('saveCurrent').textContent = fmtUSD(save);
     document.getElementById('saveGoal').textContent = fmtUSD(goal);
-    document.getElementById('saveBs').textContent = fmtBs(toBs(save)) + ' de ' + fmtBs(toBs(goal));
+    document.getElementById('saveBs').textContent = fmtBs(toBs(save, tasaType)) + ' de ' + fmtBs(toBs(goal, tasaType));
     document.getElementById('saveBar').style.width = pct + '%';
     document.getElementById('savePct').textContent = pct.toFixed(1) + '% de la meta';
 
     const list = document.getElementById('saveList');
     list.innerHTML = data.savings.deposits.length
-      ? '<div class="payments-title">Historial de ahorros</div>' +
+      ? '<div class="payments-title">Historial de ahorros (paralelo)</div>' +
         data.savings.deposits.slice().reverse().map(p => `
           <div class="pay-row">
             <span class="pay-date">${fmtDate(p.fecha)}</span>
             <span>
               <span class="pay-amt">${fmtUSD(p.montoUSD)}</span>
-              <span class="pay-bs">${fmtBs(toBs(p.montoUSD))}</span>
+              <span class="pay-bs">${fmtBs(toBs(p.montoUSD, tasaType))}</span>
               <button class="pay-del" onclick="deleteSaving('${p.id}')">✕</button>
             </span>
           </div>`).join('')
@@ -435,9 +542,21 @@
     const name = document.getElementById('newDebtName').value.trim();
     const usd = parseFloat(document.getElementById('newDebtUSD').value);
     const note = document.getElementById('newDebtNote').value.trim();
+    const tasa = document.getElementById('newDebtTasa').value;
+    const moneda = document.getElementById('newDebtMoneda').value;
+    
     if (!name) { alert('Ingresa el nombre del acreedor'); return; }
     if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto válido en USD'); return; }
-    data.debts.push({ id: id(), acreedor: name, montoUSD: usd, nota: note, payments: [] });
+    
+    data.debts.push({ 
+      id: id(), 
+      acreedor: name, 
+      montoUSD: usd, 
+      nota: note, 
+      tasa: tasa,
+      moneda: moneda,
+      payments: [] 
+    });
     saveData(data);
     document.getElementById('newDebtName').value = '';
     document.getElementById('newDebtUSD').value = '';
@@ -453,13 +572,45 @@
   }
 
   function addPayment(debtId) {
-    const input = document.getElementById('abono-' + debtId);
-    const usd = parseFloat(input.value);
-    if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto de abono válido'); return; }
     const debt = data.debts.find(d => d.id === debtId);
     if (!debt) return;
-    debt.payments.push({ id: id(), montoUSD: usd, fecha: new Date().toISOString() });
+    
+    const inputUsd = document.getElementById('abono-usd-' + debtId);
+    const inputBs = document.getElementById('abono-bs-' + debtId);
+    
+    let usd = parseFloat(inputUsd.value);
+    let bs = null;
+    
+    // Si la deuda permite Bs y se ingresó un valor en Bs
+    if (debt.moneda === 'bs' && inputBs) {
+      const bsValue = parseFloat(inputBs.value);
+      if (!isNaN(bsValue) && bsValue > 0) {
+        // Se ingresó en Bs, convertir a USD
+        bs = bsValue;
+        usd = toUSD(bsValue, debt.tasa || 'binance_usd');
+      }
+    }
+    
+    if (isNaN(usd) || usd <= 0) { 
+      alert('Ingresa un monto de abono válido (en USD o Bs)'); 
+      return; 
+    }
+    
+    const payment = { 
+      id: id(), 
+      montoUSD: usd, 
+      fecha: new Date().toISOString() 
+    };
+    
+    // Si se pagó en Bs, guardar ese monto también
+    if (bs) {
+      payment.montoBs = bs;
+    }
+    
+    debt.payments.push(payment);
     saveData(data);
+    inputUsd.value = '';
+    if (inputBs) inputBs.value = '';
     render();
   }
 
@@ -494,9 +645,9 @@
     document.getElementById('app').style.display = 'block';
     data = loadData();
     render();
-    await refreshRate();
-    // refresca la tasa cada 60s
-    rateTimer = setInterval(refreshRate, 60000);
+    await refreshRates();
+    // refresca las tasas cada 60s
+    rateTimer = setInterval(refreshRates, 60000);
   })();
 </script>
 </body>
