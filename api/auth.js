@@ -15,9 +15,9 @@ const crypto = require('crypto');
 
 // Valores por defecto (sobrescribir con variables de entorno en Vercel)
 const DEFAULT_USER = 'hw';
-// SHA-256 de "MisFinanzas2026!"
+// SHA-256 de "565851"
 const DEFAULT_PASS_HASH =
-  'ff3cad7ffd1d9e20d9a4c2f41e7f29c57317a003104a52277aa492d8c8f674ec';
+  '2a8acfecb8f1896fb11b3ddbe7b32780d46c339b2b5e0a206e1c715311cce81d';
 const DEFAULT_SECRET = 'p2p-finanzas-secret-cambiar-en-vercel-2026';
 
 const USER = process.env.FINANCE_USER || DEFAULT_USER;
