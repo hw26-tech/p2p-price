@@ -97,6 +97,40 @@
     .pay-del:hover { color: #ef4444; }
     .no-pay { font-size: 0.7rem; color: #475569; font-style: italic; }
 
+    /* Crédito con cuotas (tipo Ubii) */
+    .credito-badge { display:inline-block; font-size:0.58rem; font-weight:700; color:#a78bfa; background:#2e1065; border:1px solid #6d28d9; padding:0.1rem 0.45rem; border-radius:999px; margin-left:0.4rem; vertical-align:middle; }
+    .compra { background: #0b1220; border: 1px solid #1e293b; border-radius: 0.85rem; padding: 0.8rem; margin-bottom: 0.7rem; }
+    .compra.al-dia { opacity: 0.7; border-color:#14532d; }
+    .compra-top { display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; }
+    .compra-name { font-size:0.88rem; font-weight:700; color:#fff; }
+    .compra-meta { font-size:0.62rem; color:#64748b; margin-top:0.1rem; }
+    .compra-total { font-size:0.88rem; font-weight:800; color:#fff; white-space:nowrap; }
+    .compra-del { background:none; border:none; color:#475569; font-size:0.8rem; cursor:pointer; }
+    .compra-del:hover { color:#ef4444; }
+    .cuota { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0; border-top:1px solid #111827; }
+    .cuota:first-of-type { border-top:none; }
+    .cuota-dot { width:18px; height:18px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:0.6rem; }
+    .cuota-dot.pagado { background:#10b981; color:#022; }
+    .cuota-dot.parcial { background:#f59e0b; color:#221; }
+    .cuota-dot.pend { border:2px solid #3b82f6; }
+    .cuota-info { flex:1; min-width:0; }
+    .cuota-label { font-size:0.74rem; color:#e2e8f0; font-weight:600; }
+    .cuota-sub { font-size:0.6rem; color:#64748b; }
+    .cuota-monto { font-size:0.78rem; font-weight:700; color:#fff; white-space:nowrap; }
+    .cuota-monto.pagado { color:#34d399; }
+    .cuota-abonar { display:flex; gap:0.35rem; margin-top:0.4rem; padding-left:1.6rem; }
+    .cuota-abonar input { flex:1; min-width:0; padding:0.4rem 0.55rem; background:#020617; border:1px solid #334155; border-radius:0.55rem; color:#fff; font-size:0.78rem; outline:none; }
+    .cuota-abonar input:focus { border-color:#3b82f6; }
+    .cuota-abonar button { padding:0.4rem 0.7rem; background:#13314f; border:1px solid #1e3a5f; border-radius:0.55rem; color:#60a5fa; font-size:0.72rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .cuota-abonar button:hover { background:#1c4068; }
+    .mini-form { display:flex; gap:0.4rem; margin-top:0.5rem; }
+    .mini-form input { flex:1; min-width:0; padding:0.45rem 0.6rem; background:#020617; border:1px solid #334155; border-radius:0.55rem; color:#fff; font-size:0.76rem; outline:none; }
+    .mini-form input:focus { border-color:#3b82f6; }
+    .mini-form button { padding:0.45rem 0.7rem; background:#1e293b; border:1px solid #334155; border-radius:0.55rem; color:#cbd5e1; font-size:0.72rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .mini-form button:hover { border-color:#3b82f6; color:#fff; }
+    .add-compra-btn { width:100%; margin-top:0.4rem; padding:0.5rem; background:#0b1220; border:1px dashed #334155; border-radius:0.7rem; color:#94a3b8; font-size:0.74rem; font-weight:700; cursor:pointer; }
+    .add-compra-btn:hover { border-color:#3b82f6; color:#fff; }
+
     /* Abono form */
     .abono-form { display: flex; gap: 0.45rem; margin-top: 0.7rem; }
     .abono-form input {
@@ -245,7 +279,11 @@
     <div class="card-header"><div class="section-title">Agregar nueva deuda</div></div>
     <div class="add-form">
       <input type="text" id="newDebtName" placeholder="Nombre del acreedor">
-      <div class="add-row">
+      <select id="newDebtTipo" onchange="toggleDebtTipo()">
+        <option value="simple">Deuda simple (un solo monto)</option>
+        <option value="credito">Crédito con cuotas (tipo Ubii)</option>
+      </select>
+      <div class="add-row" id="rowMontoNota">
         <input type="number" id="newDebtUSD" placeholder="Monto en USD" step="0.01" min="0">
         <input type="text" id="newDebtNote" placeholder="Nota (opcional)">
       </div>
@@ -260,7 +298,9 @@
           <option value="bs">También en Bs</option>
         </select>
       </div>
+      <p id="creditoHint" style="display:none;font-size:0.66rem;color:#a78bfa;margin:0;">💡 Crearás el crédito vacío y luego agregas las compras y sus cuotas dentro de la tarjeta.</p>
       <button class="btn-primary" onclick="addDebt()">+ Agregar deuda</button>
+      <button class="add-compra-btn" onclick="restaurarUbii()">↻ Restaurar crédito Ubii (con sus cuotas)</button>
     </div>
   </div>
 
@@ -364,6 +404,34 @@
   }
 
   /* ---------- DATA ---------- */
+  // Estructura inicial de Ubii como crédito con compras y cuotas (según la app real).
+  // Las cuotas pendientes suman $28,71 (1,30 + 5,45 + 21,96) como en "Pagar $28,71".
+  function ubiiSeed() {
+    return {
+      id: id(),
+      acreedor: 'Ubii Crédito Personal',
+      tipo: 'credito',
+      nota: 'Préstamo por cuotas',
+      tasa: 'bcv_usd',
+      moneda: 'bs',
+      payments: [],
+      compras: [
+        { id: id(), nombre: 'Supermercado', cuotas: [
+          { id: id(), monto: 5.45, fecha: '2025-07-05', abonado: 5.45 },
+          { id: id(), monto: 1.30, fecha: '2025-07-05', abonado: 0 }
+        ]},
+        { id: id(), nombre: 'Ropa y calzado', cuotas: [
+          { id: id(), monto: 5.45, fecha: '2025-07-06', abonado: 5.45 },
+          { id: id(), monto: 5.45, fecha: '2025-07-06', abonado: 0 }
+        ]},
+        { id: id(), nombre: 'Supermercado', cuotas: [
+          { id: id(), monto: 23.98, fecha: '2025-07-20', abonado: 23.98 },
+          { id: id(), monto: 21.96, fecha: '2025-07-20', abonado: 0 }
+        ]}
+      ]
+    };
+  }
+
   function seedData() {
     return {
       debts: [
@@ -376,15 +444,7 @@
           moneda: 'usd',
           payments: [] 
         },
-        { 
-          id: id(), 
-          acreedor: 'Ubii Créditos', 
-          montoUSD: 25.83, 
-          nota: '', 
-          tasa: 'bcv_usd',
-          moneda: 'bs',
-          payments: [] 
-        }
+        ubiiSeed()
       ],
       savings: { metaUSD: 500, deposits: [] },
       banks: [
@@ -417,6 +477,8 @@
     let changed = false;
     d.debts.forEach(debt => {
       const nombre = (debt.acreedor || '').toLowerCase();
+      // Asegurar arreglo de payments
+      if (!Array.isArray(debt.payments)) { debt.payments = []; changed = true; }
       // Asignar tasa/moneda por defecto si faltan
       if (!debt.tasa) {
         if (nombre.includes('ubii')) debt.tasa = 'bcv_usd';
@@ -431,6 +493,20 @@
       if (nombre.includes('ubii')) {
         if (debt.tasa !== 'bcv_usd') { debt.tasa = 'bcv_usd'; changed = true; }
         if (debt.moneda !== 'bs') { debt.moneda = 'bs'; changed = true; }
+        // Convertir Ubii simple (sin cuotas) en crédito con sub-cuotas
+        if (debt.tipo !== 'credito') {
+          const seed = ubiiSeed();
+          debt.tipo = 'credito';
+          debt.acreedor = 'Ubii Crédito Personal';
+          debt.nota = debt.nota || 'Préstamo por cuotas';
+          debt.compras = seed.compras;
+          changed = true;
+        }
+      }
+      // Si quedó tipo credito sin compras, dale un arreglo vacío
+      if (debt.tipo === 'credito' && !Array.isArray(debt.compras)) {
+        debt.compras = [];
+        changed = true;
       }
     });
     // Migración de bancos: si no existían en datos viejos, crearlos
@@ -476,6 +552,12 @@
     return d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
            ' ' + d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
   }
+  function fmtFechaCorta(iso) {
+    // Acepta 'YYYY-MM-DD' o ISO; muestra "05 jul"
+    const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' });
+  }
   function getTasaLabel(tasaType) {
     const labels = {
       binance_usd: 'Binance USD',
@@ -486,8 +568,23 @@
   }
 
   /* ---------- DEBT CALCS ---------- */
-  function debtPaid(debt) { return debt.payments.reduce((s, p) => s + Number(p.montoUSD || 0), 0); }
-  function debtPending(debt) { return Math.max(0, Number(debt.montoUSD) - debtPaid(debt)); }
+  function isCredito(debt) { return debt.tipo === 'credito' && Array.isArray(debt.compras); }
+  function cuotaMonto(c) { return Number(c.monto) || 0; }
+  function cuotaAbonado(c) { return Number(c.abonado) || 0; }
+  function cuotaPending(c) { return Math.max(0, cuotaMonto(c) - cuotaAbonado(c)); }
+  function compraTotal(co) { return co.cuotas.reduce((s, c) => s + cuotaMonto(c), 0); }
+  function compraAbonado(co) { return co.cuotas.reduce((s, c) => s + cuotaAbonado(c), 0); }
+  function compraPending(co) { return Math.max(0, compraTotal(co) - compraAbonado(co)); }
+
+  function debtTotal(debt) {
+    if (isCredito(debt)) return debt.compras.reduce((s, co) => s + compraTotal(co), 0);
+    return Number(debt.montoUSD) || 0;
+  }
+  function debtPaid(debt) {
+    if (isCredito(debt)) return debt.compras.reduce((s, co) => s + compraAbonado(co), 0);
+    return (debt.payments || []).reduce((s, p) => s + Number(p.montoUSD || 0), 0);
+  }
+  function debtPending(debt) { return Math.max(0, debtTotal(debt) - debtPaid(debt)); }
   function totalPending() { return data.debts.reduce((s, d) => s + debtPending(d), 0); }
   function totalSavings() { return data.savings.deposits.reduce((s, p) => s + Number(p.montoUSD || 0), 0); }
 
@@ -577,6 +674,113 @@
       return;
     }
     list.innerHTML = data.debts.map(debt => {
+      if (isCredito(debt)) return renderCreditoCard(debt);
+      return renderSimpleCard(debt);
+    }).join('');
+  }
+
+  // ---- Tarjeta de crédito con sub-cuotas (tipo Ubii) ----
+  function renderCreditoCard(debt) {
+    const tasaType = debt.tasa || 'bcv_usd';
+    const total = debtTotal(debt);
+    const paid = debtPaid(debt);
+    const pending = debtPending(debt);
+    const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
+    const isPaid = pending <= 0.0001;
+
+    const comprasHtml = (debt.compras || []).length
+      ? debt.compras.map(co => {
+          const coTotal = compraTotal(co);
+          const coPend = compraPending(co);
+          const coPaid = coPend <= 0.0001;
+          const cuotasHtml = co.cuotas.map((c, i) => {
+            const pend = cuotaPending(c);
+            const abonado = cuotaAbonado(c);
+            let estado, dotClass, dotIcon, montoClass;
+            if (pend <= 0.0001) { estado = 'Pagado'; dotClass = 'pagado'; dotIcon = '✓'; montoClass = 'pagado'; }
+            else if (abonado > 0) { estado = 'Parcial (' + fmtUSD(abonado) + ')'; dotClass = 'parcial'; dotIcon = ''; montoClass = ''; }
+            else { estado = c.fecha ? fmtFechaCorta(c.fecha) : 'Pendiente'; dotClass = 'pend'; dotIcon = ''; montoClass = ''; }
+            const abonarRow = pend > 0.0001 ? `
+              <div class="cuota-abonar">
+                <input type="number" id="cab-${c.id}" placeholder="Abonar (USD) — falta ${fmtUSD(pend)}" step="0.01" min="0">
+                <button onclick="abonarCuota('${debt.id}','${co.id}','${c.id}')">Abonar</button>
+              </div>` : '';
+            return `
+              <div class="cuota">
+                <div class="cuota-dot ${dotClass}">${dotIcon}</div>
+                <div class="cuota-info">
+                  <div class="cuota-label">Cuota ${i + 1}</div>
+                  <div class="cuota-sub">${estado} • ${fmtBs(toBs(cuotaMonto(c), tasaType))}</div>
+                </div>
+                <div class="cuota-monto ${montoClass}">${fmtUSD(cuotaMonto(c))}</div>
+                <button class="compra-del" title="Eliminar cuota" onclick="deleteCuota('${debt.id}','${co.id}','${c.id}')">✕</button>
+              </div>
+              ${abonarRow}`;
+          }).join('');
+          return `
+            <div class="compra ${coPaid ? 'al-dia' : ''}">
+              <div class="compra-top">
+                <div>
+                  <div class="compra-name">${escapeHtml(co.nombre)}${coPaid ? ' ✅' : ''}</div>
+                  <div class="compra-meta">${coPaid ? 'Al día' : 'Pendiente: ' + fmtUSD(coPend)}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="compra-total">${fmtUSD(coTotal)}</div>
+                  <button class="compra-del" title="Eliminar compra" onclick="deleteCompra('${debt.id}','${co.id}')">🗑️</button>
+                </div>
+              </div>
+              ${cuotasHtml}
+              <div class="mini-form">
+                <input type="number" id="ncm-${co.id}" placeholder="Monto cuota (USD)" step="0.01" min="0">
+                <input type="date" id="ncf-${co.id}">
+                <button onclick="addCuota('${debt.id}','${co.id}')">+ Cuota</button>
+              </div>
+            </div>`;
+        }).join('')
+      : '<div class="no-pay">Sin compras registradas. Agrega una abajo 👇</div>';
+
+    return `
+      <div class="debt">
+        <div class="debt-top">
+          <div>
+            <div class="debt-name">${escapeHtml(debt.acreedor)}<span class="credito-badge">CUOTAS</span></div>
+            <div class="debt-note">${getTasaLabel(tasaType)}${debt.nota ? ' • ' + escapeHtml(debt.nota) : ''}</div>
+          </div>
+          <button class="debt-del" title="Eliminar crédito" onclick="deleteDebt('${debt.id}')">🗑️</button>
+        </div>
+
+        <div class="debt-rows">
+          <div class="d-row">
+            <span class="dr-label">Total del crédito</span>
+            <span><span class="dr-usd">${fmtUSD(total)}</span><span class="dr-bs">${fmtBs(toBs(total, tasaType))}</span></span>
+          </div>
+          <div class="d-row">
+            <span class="dr-label">Abonado</span>
+            <span><span class="dr-usd">${fmtUSD(paid)}</span><span class="dr-bs">${fmtBs(toBs(paid, tasaType))}</span></span>
+          </div>
+          <div class="d-row ${isPaid ? 'paid-off' : 'pending'}">
+            <span class="dr-label">${isPaid ? 'Al día ✅' : 'Por pagar'}</span>
+            <span><span class="dr-usd">${fmtUSD(pending)}</span><span class="dr-bs">${fmtBs(toBs(pending, tasaType))}</span></span>
+          </div>
+        </div>
+
+        <div class="debt-bar-bg"><div class="debt-bar-fill" style="width:${pct}%;"></div></div>
+        <div class="debt-pct">${pct.toFixed(1)}% pagado</div>
+
+        <div class="payments" style="margin-top:0.8rem;">
+          <div class="payments-title">Compras y cuotas</div>
+          ${comprasHtml}
+        </div>
+
+        <div class="mini-form" style="margin-top:0.6rem;">
+          <input type="text" id="ncn-${debt.id}" placeholder="Nombre de la compra (ej: Supermercado)">
+          <button onclick="addCompra('${debt.id}')">+ Compra</button>
+        </div>
+      </div>`;
+  }
+
+  // ---- Tarjeta de deuda simple (como antes) ----
+  function renderSimpleCard(debt) {
       const paid = debtPaid(debt);
       const pending = debtPending(debt);
       const monto = Number(debt.montoUSD);
@@ -645,7 +849,6 @@
 
           ${abonoFormHtml}
         </div>`;
-    }).join('');
   }
 
   function renderSavings() {
@@ -938,6 +1141,22 @@
     el.innerHTML = html;
   }
 
+  // Aplica un abono en USD a las cuotas pendientes más viejas (por fecha) de un crédito
+  function applyCreditoPayment(debt, usd) {
+    let rem = usd;
+    const cuotas = debt.compras
+      .flatMap(co => co.cuotas)
+      .filter(c => cuotaPending(c) > 0.0001)
+      .sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0));
+    for (const c of cuotas) {
+      if (rem <= 0.0001) break;
+      const need = cuotaPending(c);
+      const take = Math.min(need, rem);
+      c.abonado = Math.round((cuotaAbonado(c) + take) * 100) / 100;
+      rem -= take;
+    }
+  }
+
   // Registra el abono sugerido y lo descuenta del dinero disponible
   function registrarAbonoSugerido(debtId, usd) {
     const debt = data.debts.find(d => d.id === debtId);
@@ -949,18 +1168,24 @@
     const binRate = rates.binance_usd || 0;
     const rateType = debt.tasa || 'binance_usd';
     const rateVal = rates[rateType] || 0;
-    const payment = { id: id(), montoUSD: usd, fecha: new Date().toISOString() };
+    const moneda = debt.moneda || 'usd';
 
-    if (debt.moneda === 'bs') {
-      const bs = usd * rateVal;
-      payment.montoBs = bs;
-      deductBs(bs);
+    if (moneda === 'bs') {
+      deductBs(usd * rateVal);
     } else {
       const leftover = deductUsd(usd); // paga con dólares en efectivo
       if (leftover > 0.01 && binRate > 0) deductBs(leftover * binRate); // compra los que falten
     }
 
-    debt.payments.push(payment);
+    // Registrar el abono: en crédito se reparte entre cuotas; en simple va al historial
+    if (isCredito(debt)) {
+      applyCreditoPayment(debt, usd);
+    } else {
+      const payment = { id: id(), montoUSD: usd, fecha: new Date().toISOString() };
+      if (moneda === 'bs') payment.montoBs = usd * rateVal;
+      debt.payments.push(payment);
+    }
+
     saveData(data);
     render();
   }
@@ -989,19 +1214,34 @@
     const note = document.getElementById('newDebtNote').value.trim();
     const tasa = document.getElementById('newDebtTasa').value;
     const moneda = document.getElementById('newDebtMoneda').value;
-    
+    const tipo = document.getElementById('newDebtTipo').value;
+
     if (!name) { alert('Ingresa el nombre del acreedor'); return; }
-    if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto válido en USD'); return; }
-    
-    data.debts.push({ 
-      id: id(), 
-      acreedor: name, 
-      montoUSD: usd, 
-      nota: note, 
-      tasa: tasa,
-      moneda: moneda,
-      payments: [] 
-    });
+
+    if (tipo === 'credito') {
+      // Crédito con cuotas: empieza vacío, las compras/cuotas se agregan en la tarjeta
+      data.debts.push({
+        id: id(),
+        acreedor: name,
+        tipo: 'credito',
+        nota: note,
+        tasa: tasa,
+        moneda: moneda,
+        payments: [],
+        compras: []
+      });
+    } else {
+      if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto válido en USD'); return; }
+      data.debts.push({
+        id: id(),
+        acreedor: name,
+        montoUSD: usd,
+        nota: note,
+        tasa: tasa,
+        moneda: moneda,
+        payments: []
+      });
+    }
     saveData(data);
     document.getElementById('newDebtName').value = '';
     document.getElementById('newDebtUSD').value = '';
@@ -1012,6 +1252,93 @@
   function deleteDebt(debtId) {
     if (!confirm('¿Eliminar esta deuda y todo su historial?')) return;
     data.debts = data.debts.filter(d => d.id !== debtId);
+    saveData(data);
+    render();
+  }
+
+  // Muestra/oculta el campo de monto según el tipo de deuda
+  function toggleDebtTipo() {
+    const tipo = document.getElementById('newDebtTipo').value;
+    const row = document.getElementById('rowMontoNota');
+    const hint = document.getElementById('creditoHint');
+    if (tipo === 'credito') {
+      row.style.display = 'none';
+      hint.style.display = 'block';
+    } else {
+      row.style.display = 'flex';
+      hint.style.display = 'none';
+    }
+  }
+
+  // Restaura el crédito Ubii con su estructura de compras/cuotas
+  function restaurarUbii() {
+    const existe = data.debts.some(d => (d.acreedor || '').toLowerCase().includes('ubii'));
+    if (existe && !confirm('Ya tienes un "Ubii" registrado. ¿Agregar otro crédito Ubii de todos modos?')) return;
+    data.debts.push(ubiiSeed());
+    saveData(data);
+    render();
+  }
+
+  /* ---------- ACCIONES DE CRÉDITO (compras y cuotas) ---------- */
+  function addCompra(debtId) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt || !isCredito(debt)) return;
+    const input = document.getElementById('ncn-' + debtId);
+    const nombre = (input.value || '').trim();
+    if (!nombre) { alert('Escribe el nombre de la compra'); return; }
+    debt.compras.push({ id: id(), nombre: nombre, cuotas: [] });
+    saveData(data);
+    render();
+  }
+
+  function deleteCompra(debtId, compraId) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt || !isCredito(debt)) return;
+    if (!confirm('¿Eliminar esta compra y sus cuotas?')) return;
+    debt.compras = debt.compras.filter(co => co.id !== compraId);
+    saveData(data);
+    render();
+  }
+
+  function addCuota(debtId, compraId) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt || !isCredito(debt)) return;
+    const compra = debt.compras.find(co => co.id === compraId);
+    if (!compra) return;
+    const montoInput = document.getElementById('ncm-' + compraId);
+    const fechaInput = document.getElementById('ncf-' + compraId);
+    const monto = parseFloat(montoInput.value);
+    if (isNaN(monto) || monto <= 0) { alert('Ingresa el monto de la cuota en USD'); return; }
+    const fecha = fechaInput.value || new Date().toISOString().slice(0, 10);
+    compra.cuotas.push({ id: id(), monto: monto, fecha: fecha, abonado: 0 });
+    saveData(data);
+    render();
+  }
+
+  function deleteCuota(debtId, compraId, cuotaId) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt || !isCredito(debt)) return;
+    const compra = debt.compras.find(co => co.id === compraId);
+    if (!compra) return;
+    if (!confirm('¿Eliminar esta cuota?')) return;
+    compra.cuotas = compra.cuotas.filter(c => c.id !== cuotaId);
+    saveData(data);
+    render();
+  }
+
+  // Abono manual a una cuota (solo registra; no toca tus bancos)
+  function abonarCuota(debtId, compraId, cuotaId) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt || !isCredito(debt)) return;
+    const compra = debt.compras.find(co => co.id === compraId);
+    if (!compra) return;
+    const cuota = compra.cuotas.find(c => c.id === cuotaId);
+    if (!cuota) return;
+    const input = document.getElementById('cab-' + cuotaId);
+    const monto = parseFloat(input.value);
+    if (isNaN(monto) || monto <= 0) { alert('Ingresa el monto a abonar en USD'); return; }
+    const nuevo = Math.min(cuotaMonto(cuota), cuotaAbonado(cuota) + monto);
+    cuota.abonado = Math.round(nuevo * 100) / 100;
     saveData(data);
     render();
   }
