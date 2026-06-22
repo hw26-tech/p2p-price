@@ -168,6 +168,15 @@
     .asst-ok { color: #34d399 !important; }
     .asst-warn { color: #f87171 !important; }
     .asst-buy { background: #1e1b09; border: 1px solid #78350f; border-radius: 0.6rem; padding: 0.55rem 0.7rem; margin-top: 0.5rem; font-size: 0.74rem; color: #fcd34d; }
+    .asst-summary { background: #020617; border: 1px solid #1e293b; border-radius: 0.85rem; padding: 0.85rem; margin-bottom: 0.9rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.6; }
+    .btn-registrar {
+      width: 100%; margin-top: 0.6rem; padding: 0.55rem;
+      background: linear-gradient(135deg,#3b82f6,#2563eb); border: none;
+      border-radius: 0.6rem; color: #fff; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: 0.15s;
+    }
+    .btn-registrar:hover { filter: brightness(1.12); }
+    .btn-registrar:active { transform: translateY(1px); }
+    .btn-ahorrar { background: linear-gradient(135deg,#10b981,#059669); }
 
     .ts { text-align: center; font-size: 0.7rem; color: #475569; margin-bottom: 1rem; }
     footer { text-align: center; padding: 1.5rem 0; color: #334155; font-size: 0.7rem; }
@@ -797,122 +806,176 @@
   }
 
   /* ---------- ASISTENTE DE PAGOS ---------- */
-  function renderAssistant() {
-    const el = document.getElementById('assistant');
+  const CUSHION_PCT = 0.15; // colchón de emergencia: 15% de tu dinero, reservado por la app
+
+  // Descuenta Bs de tus bancos en Bs (del de mayor saldo primero)
+  function deductBs(amount) {
+    let rem = amount;
+    const bsBanks = data.banks.filter(b => b.moneda === 'bs' && b.saldo > 0).sort((a, b) => b.saldo - a.saldo);
+    for (const b of bsBanks) {
+      if (rem <= 0) break;
+      const take = Math.min(b.saldo, rem);
+      b.saldo = Math.round((b.saldo - take) * 100) / 100;
+      rem -= take;
+    }
+  }
+  // Descuenta USD de tus bancos en dólares; devuelve lo que no se pudo cubrir
+  function deductUsd(amount) {
+    let rem = amount;
+    const usdBanks = data.banks.filter(b => b.moneda === 'usd' && b.saldo > 0).sort((a, b) => b.saldo - a.saldo);
+    for (const b of usdBanks) {
+      if (rem <= 0) break;
+      const take = Math.min(b.saldo, rem);
+      b.saldo = Math.round((b.saldo - take) * 100) / 100;
+      rem -= take;
+    }
+    return rem;
+  }
+
+  // Calcula el plan: reparte tu dinero entre deudas + ahorro, dejando colchón
+  function computePlan() {
     const usdCash = totalUSDcash();
     const bsTotal = data.banks.filter(b => b.moneda === 'bs').reduce((s, b) => s + (Number(b.saldo) || 0), 0);
-
-    // "Bolsillos" que se van descontando a medida que asignamos
-    let poolUSD = usdCash;   // dólares en efectivo
-    let poolBs = bsTotal;    // bolívares
     const binRate = rates.binance_usd || 0;
+    const availableUSD = usdCash + (binRate > 0 ? bsTotal / binRate : 0);
+    const cushionUSD = availableUSD * CUSHION_PCT;
+    const afterCushion = Math.max(0, availableUSD - cushionUSD);
 
-    let html = '';
-
-    // Recorre TODAS las deudas pendientes
     const pendingDebts = data.debts.filter(d => debtPending(d) > 0.0001);
+    const totalPending = pendingDebts.reduce((s, d) => s + debtPending(d), 0);
+
+    const plan = [];
+    let usedForDebts = 0;
     pendingDebts.forEach(debt => {
       const pending = debtPending(debt);
-      const rateType = debt.tasa || 'binance_usd';
-      const rateVal = rates[rateType] || 0;
-
-      if (debt.moneda === 'bs') {
-        // Se paga en Bs a su tasa
-        const needBs = pending * rateVal;
-        const usaBs = Math.min(poolBs, needBs);
-        poolBs -= usaBs;
-        const faltaBs = needBs - usaBs;
-        const cubre = faltaBs <= 0.01;
-        html += `
-          <div class="asst-item">
-            <div class="asst-head">
-              <span class="asst-title">${escapeHtml(debt.acreedor)}</span>
-              <span class="asst-amt">${fmtUSD(pending)}</span>
-            </div>
-            <div class="asst-detail">
-              Pagas en <b>Bs</b> a tasa ${getTasaLabel(rateType)}.<br>
-              Necesitas: <b style="color:#a78bfa;">${fmtBs(needBs)}</b><br>
-              ${cubre
-                ? `<span class="asst-ok">✅ Te alcanza con tus bolívares disponibles.</span>`
-                : `<span class="asst-warn">⚠️ Te faltan ${fmtBs(faltaBs)}</span> (≈ ${fmtUSD(rateVal>0?faltaBs/rateVal:0)})`}
-            </div>
-          </div>`;
+      let suggested;
+      if (afterCushion >= totalPending) {
+        suggested = pending; // alcanza para cubrir todas
+      } else if (totalPending > 0) {
+        suggested = afterCushion * (pending / totalPending); // reparte proporcional
       } else {
-        // Se paga en dólares en efectivo
-        const needUSD = pending;
-        const usaUSD = Math.min(poolUSD, needUSD);
-        poolUSD -= usaUSD;
-        const faltaUSD = needUSD - usaUSD;
-        const cubre = faltaUSD <= 0.01;
-        let buyHtml = '';
-        if (!cubre) {
-          const costoBs = faltaUSD * binRate; // comprar dólares a paralelo
-          const alcanzaBs = poolBs >= costoBs;
-          buyHtml = `
-            <div class="asst-buy">
-              💱 Debes comprar <b>${fmtUSD(faltaUSD)}</b> en dólares.<br>
-              Costo a paralelo (Binance): <b>${fmtBs(costoBs)}</b><br>
-              ${alcanzaBs
-                ? '✅ Te alcanza con tus bolívares para comprarlos.'
-                : '⚠️ No te alcanzan los Bs: faltan ' + fmtBs(costoBs - poolBs)}
-            </div>`;
-          if (alcanzaBs) poolBs -= costoBs;
-        }
-        html += `
-          <div class="asst-item">
-            <div class="asst-head">
-              <span class="asst-title">${escapeHtml(debt.acreedor)}</span>
-              <span class="asst-amt">${fmtUSD(pending)}</span>
-            </div>
-            <div class="asst-detail">
-              Pagas en <b>dólares</b> (tasa ${getTasaLabel(rateType)}).<br>
-              Dólares en efectivo disponibles: <b>${fmtUSD(usdCash)}</b><br>
-              ${cubre
-                ? `<span class="asst-ok">✅ Te alcanza con tus dólares.</span>`
-                : `<span class="asst-warn">⚠️ Te faltan ${fmtUSD(faltaUSD)} en dólares.</span>`}
-            </div>
-            ${buyHtml}
-          </div>`;
+        suggested = 0;
       }
+      suggested = Math.min(pending, Math.round(suggested * 100) / 100);
+      usedForDebts += suggested;
+      plan.push({ debt, pending, suggestedUSD: suggested });
     });
 
-    // Ahorro
-    const saved = totalSavings();
-    const goal = Number(data.savings.metaUSD) || 500;
-    const faltaAhorro = Math.max(0, goal - saved);
-    if (faltaAhorro > 0.01) {
-      const usaUSD = Math.min(poolUSD, faltaAhorro);
-      poolUSD -= usaUSD;
-      const faltaTrasUSD = faltaAhorro - usaUSD;
+    const savingUSD = Math.max(0, Math.round((afterCushion - usedForDebts) * 100) / 100);
+    return { usdCash, bsTotal, binRate, availableUSD, cushionUSD, afterCushion, plan, savingUSD };
+  }
+
+  function renderAssistant() {
+    const el = document.getElementById('assistant');
+    if (!ratesOk) { el.innerHTML = '<div class="no-pay">Esperando tasas para calcular tu plan...</div>'; return; }
+
+    const { usdCash, bsTotal, binRate, availableUSD, cushionUSD, plan, savingUSD } = computePlan();
+
+    if (availableUSD <= 0.01) {
+      el.innerHTML = '<div class="no-pay">👆 Escribe cuánto tienes en tus bancos arriba y te armo el plan de pagos automáticamente.</div>';
+      return;
+    }
+
+    let html = `
+      <div class="asst-summary">
+        <div>💰 Tienes disponible: <b>${fmtUSD(availableUSD)}</b></div>
+        <div style="font-size:0.66rem;color:#64748b;">(${fmtUSD(usdCash)} en dólares + ${fmtBs(bsTotal)})</div>
+        <div style="margin-top:0.35rem;">🛡️ Colchón reservado: <b style="color:#fbbf24;">${fmtUSD(cushionUSD)}</b> <span style="font-size:0.62rem;color:#64748b;">(la app lo guarda para emergencias)</span></div>
+      </div>`;
+
+    plan.forEach(({ debt, pending, suggestedUSD }) => {
+      const rateType = debt.tasa || 'binance_usd';
+      const rateVal = rates[rateType] || 0;
+      let detail = '';
+
+      if (debt.moneda === 'bs') {
+        const bs = suggestedUSD * rateVal;
+        detail = `Abona <b style="color:#a78bfa;">${fmtBs(bs)}</b> (${fmtUSD(suggestedUSD)}) a tasa ${getTasaLabel(rateType)}.`;
+      } else {
+        if (usdCash >= suggestedUSD) {
+          detail = `Paga <b>${fmtUSD(suggestedUSD)}</b> con tus dólares en efectivo.`;
+        } else {
+          const fromCash = Math.min(usdCash, suggestedUSD);
+          const buy = suggestedUSD - fromCash;
+          detail = `Abona <b>${fmtUSD(suggestedUSD)}</b>. ${fromCash > 0 ? 'Usa ' + fmtUSD(fromCash) + ' en efectivo y compra ' : 'Compra '}<b>${fmtUSD(buy)}</b> ≈ <b style="color:#a78bfa;">${fmtBs(buy * binRate)}</b> a paralelo.`;
+        }
+      }
+
+      const btn = suggestedUSD > 0.01
+        ? `<button class="btn-registrar" onclick="registrarAbonoSugerido('${debt.id}', ${suggestedUSD})">✓ Registrar abono y descontar</button>`
+        : `<div class="asst-detail asst-warn">No queda dinero para abonar aquí ahora.</div>`;
+
+      html += `
+        <div class="asst-item">
+          <div class="asst-head">
+            <span class="asst-title">${escapeHtml(debt.acreedor)}</span>
+            <span class="asst-amt">${fmtUSD(suggestedUSD)}</span>
+          </div>
+          <div class="asst-detail">Pendiente total: ${fmtUSD(pending)}<br>${detail}</div>
+          ${btn}
+        </div>`;
+    });
+
+    // Ahorro: cuánto PUEDES ahorrar de lo que te queda
+    if (savingUSD > 0.01) {
       html += `
         <div class="asst-item" style="border-color:#065f46;">
           <div class="asst-head">
-            <span class="asst-title">🐷 Meta de Ahorro</span>
-            <span class="asst-amt asst-ok">${fmtUSD(faltaAhorro)}</span>
+            <span class="asst-title">🐷 Puedes ahorrar</span>
+            <span class="asst-amt asst-ok">${fmtUSD(savingUSD)}</span>
           </div>
-          <div class="asst-detail">
-            Te falta para llegar a ${fmtUSD(goal)} (paralelo).<br>
-            ${faltaTrasUSD <= 0.01
-              ? `<span class="asst-ok">✅ Podrías cubrirlo con tus dólares disponibles.</span>`
-              : `Aún faltarían <b>${fmtUSD(faltaTrasUSD)}</b> tras pagar deudas. ≈ ${fmtBs(faltaTrasUSD * binRate)} a paralelo.`}
-          </div>
+          <div class="asst-detail">De lo que te queda tras abonar tus deudas (y guardar tu colchón), esto puedes mandarlo al ahorro. ≈ ${fmtBs(savingUSD * binRate)} a paralelo.</div>
+          <button class="btn-registrar btn-ahorrar" onclick="registrarAhorroSugerido(${savingUSD})">✓ Registrar ahorro y descontar</button>
         </div>`;
     } else {
       html += `
         <div class="asst-item" style="border-color:#065f46;">
-          <div class="asst-head">
-            <span class="asst-title">🐷 Meta de Ahorro</span>
-            <span class="asst-amt asst-ok">✅ Completada</span>
-          </div>
-          <div class="asst-detail">¡Ya alcanzaste tu meta de ${fmtUSD(goal)}! 🎉</div>
+          <div class="asst-head"><span class="asst-title">🐷 Ahorro</span></div>
+          <div class="asst-detail">Por ahora tu plata se va en abonar deudas y en tu colchón. Cuando sobre algo, aquí te diré cuánto puedes ahorrar. 💪</div>
         </div>`;
     }
 
-    if (!pendingDebts.length && faltaAhorro <= 0.01) {
-      html = '<div class="no-pay">¡Estás al día con todo! No tienes deudas pendientes y tu ahorro está completo 🎉</div>';
+    el.innerHTML = html;
+  }
+
+  // Registra el abono sugerido y lo descuenta del dinero disponible
+  function registrarAbonoSugerido(debtId, usd) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt) return;
+    usd = Number(usd);
+    if (!(usd > 0)) return;
+    if (!confirm('¿Registrar abono de ' + fmtUSD(usd) + ' a "' + debt.acreedor + '"?\nSe descontará automáticamente de tu dinero disponible.')) return;
+
+    const binRate = rates.binance_usd || 0;
+    const rateType = debt.tasa || 'binance_usd';
+    const rateVal = rates[rateType] || 0;
+    const payment = { id: id(), montoUSD: usd, fecha: new Date().toISOString() };
+
+    if (debt.moneda === 'bs') {
+      const bs = usd * rateVal;
+      payment.montoBs = bs;
+      deductBs(bs);
+    } else {
+      const leftover = deductUsd(usd); // paga con dólares en efectivo
+      if (leftover > 0.01 && binRate > 0) deductBs(leftover * binRate); // compra los que falten
     }
 
-    el.innerHTML = html;
+    debt.payments.push(payment);
+    saveData(data);
+    render();
+  }
+
+  // Registra el ahorro sugerido y lo descuenta del dinero disponible
+  function registrarAhorroSugerido(usd) {
+    usd = Number(usd);
+    if (!(usd > 0)) return;
+    if (!confirm('¿Registrar ahorro de ' + fmtUSD(usd) + '?\nSe descontará automáticamente de tu dinero disponible.')) return;
+    const binRate = rates.binance_usd || 0;
+    data.savings.deposits.push({ id: id(), montoUSD: usd, fecha: new Date().toISOString() });
+    const leftover = deductUsd(usd);
+    if (leftover > 0.01 && binRate > 0) deductBs(leftover * binRate);
+    saveData(data);
+    render();
   }
 
   function escapeHtml(str) {
