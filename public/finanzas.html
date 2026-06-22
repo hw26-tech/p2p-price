@@ -700,9 +700,10 @@
             if (pend <= 0.0001) { estado = 'Pagado'; dotClass = 'pagado'; dotIcon = '✓'; montoClass = 'pagado'; }
             else if (abonado > 0) { estado = 'Parcial (' + fmtUSD(abonado) + ')'; dotClass = 'parcial'; dotIcon = ''; montoClass = ''; }
             else { estado = c.fecha ? fmtFechaCorta(c.fecha) : 'Pendiente'; dotClass = 'pend'; dotIcon = ''; montoClass = ''; }
+            const pendBs = toBs(pend, tasaType);
             const abonarRow = pend > 0.0001 ? `
               <div class="cuota-abonar">
-                <input type="number" id="cab-${c.id}" placeholder="Abonar (USD) — falta ${fmtUSD(pend)}" step="0.01" min="0">
+                <input type="number" id="cab-${c.id}" placeholder="Abonar (Bs) — falta ${fmtBs(pendBs)}" step="0.01" min="0">
                 <button onclick="abonarCuota('${debt.id}','${co.id}','${c.id}')">Abonar</button>
               </div>` : '';
             return `
@@ -1335,9 +1336,11 @@
     const cuota = compra.cuotas.find(c => c.id === cuotaId);
     if (!cuota) return;
     const input = document.getElementById('cab-' + cuotaId);
-    const monto = parseFloat(input.value);
-    if (isNaN(monto) || monto <= 0) { alert('Ingresa el monto a abonar en USD'); return; }
-    const nuevo = Math.min(cuotaMonto(cuota), cuotaAbonado(cuota) + monto);
+    const montoBs = parseFloat(input.value);
+    if (isNaN(montoBs) || montoBs <= 0) { alert('Ingresa el monto a abonar en Bs'); return; }
+    const tasaType = debt.tasa || 'bcv_usd';
+    const montoUsd = toUsd(montoBs, tasaType);
+    const nuevo = Math.min(cuotaMonto(cuota), cuotaAbonado(cuota) + montoUsd);
     cuota.abonado = Math.round(nuevo * 100) / 100;
     saveData(data);
     render();
