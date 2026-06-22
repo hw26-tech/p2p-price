@@ -74,15 +74,9 @@
 <script>
   const TOKEN_KEY = 'finanzas_token';
 
-  // Si ya hay token válido, ir directo a finanzas
-  (async function checkExisting() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-    try {
-      const r = await fetch('/api/auth', { headers: { 'Authorization': 'Bearer ' + token } });
-      if (r.ok) window.location.href = '/finanzas.html';
-    } catch (e) { /* ignore */ }
-  })();
+  // SIEMPRE pedir credenciales: limpiar cualquier token existente al cargar login
+  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
 
   const form = document.getElementById('loginForm');
   const errorMsg = document.getElementById('errorMsg');
@@ -106,7 +100,8 @@
       const data = await r.json();
 
       if (r.ok && data.success && data.token) {
-        localStorage.setItem(TOKEN_KEY, data.token);
+        // Guardar en sessionStorage: se borra al cerrar pestaña
+        sessionStorage.setItem(TOKEN_KEY, data.token);
         window.location.href = '/finanzas.html';
       } else {
         errorMsg.textContent = data.error || 'Credenciales incorrectas';

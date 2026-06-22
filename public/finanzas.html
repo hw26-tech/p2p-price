@@ -32,6 +32,16 @@
       font-size: 0.72rem; font-weight: 600; cursor: pointer;
     }
     .logout-btn:hover { border-color: #ef4444; color: #ef4444; }
+    
+    .btn-refresh {
+      width: 100%; margin-top: 0.8rem; padding: 0.6rem;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: none; border-radius: 0.75rem;
+      color: #fff; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-refresh:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
+    .btn-refresh:active { transform: translateY(0); }
 
     .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 1.25rem; padding: 1.25rem; margin-bottom: 1rem; }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -161,7 +171,7 @@
         <span class="rate-value" id="rateBcvEUR">—</span>
       </div>
     </div>
-    <button class="logout-btn" style="margin-top:0.8rem;width:100%;border-color:#334155;color:#3b82f6;" onclick="refreshRates()">⚡ Actualizar tasas</button>
+    <button class="btn-refresh" onclick="refreshRates()">⚡ Actualizar tasas</button>
   </div>
 
   <!-- Resumen -->
@@ -250,11 +260,17 @@
 
   /* ---------- AUTH GUARD ---------- */
   async function guard() {
-    const token = localStorage.getItem(TOKEN_KEY);
+    // Usa sessionStorage: se borra automáticamente al cerrar la pestaña
+    const token = sessionStorage.getItem(TOKEN_KEY);
     if (!token) { window.location.href = '/login.html'; return false; }
     try {
       const r = await fetch('/api/auth', { headers: { 'Authorization': 'Bearer ' + token } });
-      if (!r.ok) { localStorage.removeItem(TOKEN_KEY); window.location.href = '/login.html'; return false; }
+      if (!r.ok) { 
+        sessionStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(TOKEN_KEY); // limpiar también si quedó alguno viejo
+        window.location.href = '/login.html'; 
+        return false; 
+      }
       return true;
     } catch (e) {
       // En caso de error de red, permitimos continuar si hay token (offline-friendly)
@@ -263,6 +279,7 @@
   }
 
   function logout() {
+    sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
     window.location.href = '/login.html';
   }
