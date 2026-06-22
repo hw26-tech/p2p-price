@@ -135,6 +135,40 @@
     .save-pct { font-size: 0.72rem; color: #34d399; font-weight: 700; text-align: right; margin-top: 0.35rem; }
     .save-list { margin-top: 0.9rem; }
 
+    /* Bancos */
+    .bank { background: #020617; border: 1px solid #1e293b; border-radius: 1rem; padding: 0.9rem; margin-bottom: 0.75rem; }
+    .bank-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+    .bank-name { font-size: 0.95rem; font-weight: 700; color: #fff; }
+    .bank-tag { font-size: 0.62rem; color: #64748b; margin-top: 0.15rem; }
+    .bank-del { background: none; border: none; color: #475569; font-size: 0.9rem; cursor: pointer; padding: 0.1rem 0.3rem; }
+    .bank-del:hover { color: #ef4444; }
+    .bank-input-row { display: flex; gap: 0.45rem; margin-top: 0.7rem; align-items: center; }
+    .bank-input-row .bank-cur { font-size: 0.8rem; color: #94a3b8; font-weight: 700; width: 24px; }
+    .bank-input-row input {
+      flex: 1; padding: 0.55rem 0.7rem; background: #0f172a; border: 1px solid #334155;
+      border-radius: 0.65rem; color: #fff; font-size: 0.9rem; outline: none; min-width: 0;
+    }
+    .bank-input-row input:focus { border-color: #3b82f6; }
+    .bank-equiv { margin-top: 0.6rem; display: flex; gap: 0.5rem; }
+    .bank-eq-item { flex: 1; background: #0f172a; border: 1px solid #1e293b; border-radius: 0.6rem; padding: 0.45rem; text-align: center; }
+    .bank-eq-item .eq-label { font-size: 0.56rem; color: #64748b; text-transform: uppercase; }
+    .bank-eq-item .eq-val { font-size: 0.82rem; font-weight: 700; color: #38bdf8; margin-top: 0.1rem; }
+    .bank-total { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid #1e293b; }
+    .bt-row { display: flex; justify-content: space-between; align-items: baseline; padding: 0.25rem 0; }
+    .bt-row .bt-label { font-size: 0.78rem; color: #94a3b8; font-weight: 600; }
+    .bt-row .bt-val { font-size: 1.05rem; font-weight: 800; color: #38bdf8; }
+    .bt-row .bt-sub { font-size: 0.66rem; color: #64748b; }
+
+    /* Asistente */
+    .asst-item { background: #020617; border: 1px solid #1e293b; border-radius: 0.85rem; padding: 0.85rem; margin-bottom: 0.7rem; }
+    .asst-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .asst-title { font-size: 0.85rem; font-weight: 700; color: #fff; }
+    .asst-amt { font-size: 0.95rem; font-weight: 800; color: #fbbf24; }
+    .asst-detail { font-size: 0.68rem; color: #64748b; margin-top: 0.35rem; line-height: 1.5; }
+    .asst-ok { color: #34d399 !important; }
+    .asst-warn { color: #f87171 !important; }
+    .asst-buy { background: #1e1b09; border: 1px solid #78350f; border-radius: 0.6rem; padding: 0.55rem 0.7rem; margin-top: 0.5rem; font-size: 0.74rem; color: #fcd34d; }
+
     .ts { text-align: center; font-size: 0.7rem; color: #475569; margin-bottom: 1rem; }
     footer { text-align: center; padding: 1.5rem 0; color: #334155; font-size: 0.7rem; }
     .loader-screen { position: fixed; inset: 0; background: #020617; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem; z-index: 999; }
@@ -240,6 +274,42 @@
     <div class="save-list" id="saveList"></div>
   </div>
 
+  <!-- Mi Dinero Disponible -->
+  <div class="card">
+    <div class="card-header"><div class="section-title">Mi Dinero Disponible</div></div>
+    <div id="bankList"></div>
+
+    <!-- Total disponible -->
+    <div class="bank-total" id="bankTotal"></div>
+  </div>
+
+  <!-- Agregar banco -->
+  <div class="card">
+    <div class="card-header"><div class="section-title">Agregar banco / billetera</div></div>
+    <div class="add-form">
+      <input type="text" id="newBankName" placeholder="Nombre (ej: Mercantil, Zinli...)">
+      <div class="add-row">
+        <select id="newBankMoneda">
+          <option value="usd">Saldo en dólares (USD)</option>
+          <option value="bs">Saldo en bolívares (Bs)</option>
+        </select>
+        <select id="newBankTasa">
+          <option value="binance_usd">Tasa paralelo (Binance)</option>
+          <option value="bcv_usd">Tasa BCV Dólar</option>
+          <option value="bcv_eur">Tasa BCV Euro</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="addBank()">+ Agregar banco</button>
+    </div>
+  </div>
+
+  <!-- Asistente de Pagos -->
+  <div class="card" style="border-color:#1e40af;">
+    <div class="card-header"><div class="section-title" style="color:#60a5fa;">🧮 Asistente de Pagos</div></div>
+    <p style="font-size:0.75rem;color:#64748b;margin-bottom:1rem;">Cuánto necesitas para cubrir tus deudas y tu meta de ahorro, comparado con tu dinero disponible.</p>
+    <div id="assistant"></div>
+  </div>
+
   <div class="ts">Tasa actualizada: <span id="lastUpd">—</span></div>
   <footer>Mis Finanzas • Privado</footer>
 </div>
@@ -307,7 +377,13 @@
           payments: [] 
         }
       ],
-      savings: { metaUSD: 500, deposits: [] }
+      savings: { metaUSD: 500, deposits: [] },
+      banks: [
+        { id: id(), nombre: 'Banesco',      moneda: 'bs',  tasa: 'bcv_usd',     saldo: 0 },
+        { id: id(), nombre: 'Kontigo',      moneda: 'usd', tasa: 'binance_usd', saldo: 0 },
+        { id: id(), nombre: 'Ubii App Tino', moneda: 'bs',  tasa: 'bcv_usd',     saldo: 0 },
+        { id: id(), nombre: 'Ubii App HW',   moneda: 'bs',  tasa: 'bcv_usd',     saldo: 0 }
+      ]
     };
   }
 
@@ -348,6 +424,16 @@
         if (debt.moneda !== 'bs') { debt.moneda = 'bs'; changed = true; }
       }
     });
+    // Migración de bancos: si no existían en datos viejos, crearlos
+    if (!Array.isArray(d.banks)) {
+      d.banks = [
+        { id: id(), nombre: 'Banesco',      moneda: 'bs',  tasa: 'bcv_usd',     saldo: 0 },
+        { id: id(), nombre: 'Kontigo',      moneda: 'usd', tasa: 'binance_usd', saldo: 0 },
+        { id: id(), nombre: 'Ubii App Tino', moneda: 'bs',  tasa: 'bcv_usd',     saldo: 0 },
+        { id: id(), nombre: 'Ubii App HW',   moneda: 'bs',  tasa: 'bcv_usd',     saldo: 0 }
+      ];
+      changed = true;
+    }
     if (changed) saveData(d);
     return d;
   }
@@ -454,6 +540,8 @@
     renderSummary();
     renderDebts();
     renderSavings();
+    renderBanks();
+    renderAssistant();
   }
 
   function renderSummary() {
@@ -576,6 +664,255 @@
             </span>
           </div>`).join('')
       : '<div class="no-pay">Aún no has registrado ahorros</div>';
+  }
+
+  /* ---------- BANCOS ---------- */
+  // Valor en USD del saldo de un banco usando una tasa concreta
+  function bankUSDat(bank, rateType) {
+    const saldo = Number(bank.saldo) || 0;
+    if (bank.moneda === 'usd') return saldo;            // ya está en dólares
+    const rate = rates[rateType] || rates.binance_usd;
+    return rate > 0 ? saldo / rate : 0;
+  }
+  // Valor "real" en dólares del banco según su propia tasa configurada
+  function bankUSD(bank) {
+    if (bank.moneda === 'usd') return Number(bank.saldo) || 0;
+    return bankUSDat(bank, bank.tasa || 'bcv_usd');
+  }
+  // Suma de dólares en efectivo (bancos en USD)
+  function totalUSDcash() {
+    return data.banks.filter(b => b.moneda === 'usd').reduce((s, b) => s + (Number(b.saldo) || 0), 0);
+  }
+
+  function renderBanks() {
+    const list = document.getElementById('bankList');
+    if (!data.banks || !data.banks.length) {
+      list.innerHTML = '<div class="no-pay">No tienes bancos registrados</div>';
+    } else {
+      list.innerHTML = data.banks.map(bank => {
+        const cur = bank.moneda === 'usd' ? '$' : 'Bs';
+        const tag = bank.moneda === 'usd'
+          ? 'Dólares • ' + getTasaLabel(bank.tasa)
+          : 'Bolívares • ' + getTasaLabel(bank.tasa);
+
+        // Equivalencias en dólares
+        let equivHtml = '';
+        if (bank.moneda === 'bs') {
+          equivHtml = `
+            <div class="bank-equiv">
+              <div class="bank-eq-item">
+                <div class="eq-label">A BCV $</div>
+                <div class="eq-val">${fmtUSD(bankUSDat(bank, 'bcv_usd'))}</div>
+              </div>
+              <div class="bank-eq-item">
+                <div class="eq-label">A Binance USD</div>
+                <div class="eq-val">${fmtUSD(bankUSDat(bank, 'binance_usd'))}</div>
+              </div>
+            </div>`;
+        } else {
+          // Banco en dólares: mostrar su equivalente en Bs a paralelo
+          equivHtml = `
+            <div class="bank-equiv">
+              <div class="bank-eq-item">
+                <div class="eq-label">En dólares</div>
+                <div class="eq-val">${fmtUSD(Number(bank.saldo) || 0)}</div>
+              </div>
+              <div class="bank-eq-item">
+                <div class="eq-label">≈ en Bs (paralelo)</div>
+                <div class="eq-val">${fmtBs(toBs(Number(bank.saldo) || 0, 'binance_usd'))}</div>
+              </div>
+            </div>`;
+        }
+
+        return `
+          <div class="bank">
+            <div class="bank-top">
+              <div>
+                <div class="bank-name">${escapeHtml(bank.nombre)}</div>
+                <div class="bank-tag">${tag}</div>
+              </div>
+              <button class="bank-del" title="Eliminar banco" onclick="deleteBank('${bank.id}')">🗑️</button>
+            </div>
+            <div class="bank-input-row">
+              <span class="bank-cur">${cur}</span>
+              <input type="number" step="0.01" min="0" value="${bank.saldo || ''}" 
+                     placeholder="Saldo disponible"
+                     onchange="updateBank('${bank.id}', this.value)">
+            </div>
+            ${equivHtml}
+          </div>`;
+      }).join('');
+    }
+
+    // Total disponible
+    const usdCash = totalUSDcash();
+    const bsTotal = data.banks.filter(b => b.moneda === 'bs').reduce((s, b) => s + (Number(b.saldo) || 0), 0);
+    const totalUsdParalelo = data.banks.reduce((s, b) => s + bankUSDat(b, 'binance_usd'), 0);
+    const totalUsdBcv = data.banks.reduce((s, b) => s + bankUSDat(b, 'bcv_usd'), 0);
+
+    document.getElementById('bankTotal').innerHTML = `
+      <div class="bt-row">
+        <span class="bt-label">💵 Dólares en efectivo</span>
+        <span class="bt-val">${fmtUSD(usdCash)}</span>
+      </div>
+      <div class="bt-row">
+        <span class="bt-label">💴 Bolívares totales</span>
+        <span class="bt-val" style="color:#a78bfa;">${fmtBs(bsTotal)}</span>
+      </div>
+      <div class="bt-row" style="border-top:1px dashed #1e293b;margin-top:0.4rem;padding-top:0.6rem;">
+        <span class="bt-label">Total ≈ en dólares</span>
+        <span><span class="bt-val">${fmtUSD(totalUsdParalelo)}</span></span>
+      </div>
+      <div class="bt-row">
+        <span class="bt-sub">Si conviertes los Bs a BCV $</span>
+        <span class="bt-sub">${fmtUSD(totalUsdBcv)}</span>
+      </div>`;
+  }
+
+  function addBank() {
+    const name = document.getElementById('newBankName').value.trim();
+    const moneda = document.getElementById('newBankMoneda').value;
+    const tasa = document.getElementById('newBankTasa').value;
+    if (!name) { alert('Ingresa el nombre del banco o billetera'); return; }
+    data.banks.push({ id: id(), nombre: name, moneda: moneda, tasa: tasa, saldo: 0 });
+    saveData(data);
+    document.getElementById('newBankName').value = '';
+    render();
+  }
+
+  function deleteBank(bankId) {
+    if (!confirm('¿Eliminar este banco?')) return;
+    data.banks = data.banks.filter(b => b.id !== bankId);
+    saveData(data);
+    render();
+  }
+
+  function updateBank(bankId, value) {
+    const bank = data.banks.find(b => b.id === bankId);
+    if (!bank) return;
+    const v = parseFloat(value);
+    bank.saldo = isNaN(v) || v < 0 ? 0 : v;
+    saveData(data);
+    render();
+  }
+
+  /* ---------- ASISTENTE DE PAGOS ---------- */
+  function renderAssistant() {
+    const el = document.getElementById('assistant');
+    const usdCash = totalUSDcash();
+    const bsTotal = data.banks.filter(b => b.moneda === 'bs').reduce((s, b) => s + (Number(b.saldo) || 0), 0);
+
+    // "Bolsillos" que se van descontando a medida que asignamos
+    let poolUSD = usdCash;   // dólares en efectivo
+    let poolBs = bsTotal;    // bolívares
+    const binRate = rates.binance_usd || 0;
+
+    let html = '';
+
+    // Recorre TODAS las deudas pendientes
+    const pendingDebts = data.debts.filter(d => debtPending(d) > 0.0001);
+    pendingDebts.forEach(debt => {
+      const pending = debtPending(debt);
+      const rateType = debt.tasa || 'binance_usd';
+      const rateVal = rates[rateType] || 0;
+
+      if (debt.moneda === 'bs') {
+        // Se paga en Bs a su tasa
+        const needBs = pending * rateVal;
+        const usaBs = Math.min(poolBs, needBs);
+        poolBs -= usaBs;
+        const faltaBs = needBs - usaBs;
+        const cubre = faltaBs <= 0.01;
+        html += `
+          <div class="asst-item">
+            <div class="asst-head">
+              <span class="asst-title">${escapeHtml(debt.acreedor)}</span>
+              <span class="asst-amt">${fmtUSD(pending)}</span>
+            </div>
+            <div class="asst-detail">
+              Pagas en <b>Bs</b> a tasa ${getTasaLabel(rateType)}.<br>
+              Necesitas: <b style="color:#a78bfa;">${fmtBs(needBs)}</b><br>
+              ${cubre
+                ? `<span class="asst-ok">✅ Te alcanza con tus bolívares disponibles.</span>`
+                : `<span class="asst-warn">⚠️ Te faltan ${fmtBs(faltaBs)}</span> (≈ ${fmtUSD(rateVal>0?faltaBs/rateVal:0)})`}
+            </div>
+          </div>`;
+      } else {
+        // Se paga en dólares en efectivo
+        const needUSD = pending;
+        const usaUSD = Math.min(poolUSD, needUSD);
+        poolUSD -= usaUSD;
+        const faltaUSD = needUSD - usaUSD;
+        const cubre = faltaUSD <= 0.01;
+        let buyHtml = '';
+        if (!cubre) {
+          const costoBs = faltaUSD * binRate; // comprar dólares a paralelo
+          const alcanzaBs = poolBs >= costoBs;
+          buyHtml = `
+            <div class="asst-buy">
+              💱 Debes comprar <b>${fmtUSD(faltaUSD)}</b> en dólares.<br>
+              Costo a paralelo (Binance): <b>${fmtBs(costoBs)}</b><br>
+              ${alcanzaBs
+                ? '✅ Te alcanza con tus bolívares para comprarlos.'
+                : '⚠️ No te alcanzan los Bs: faltan ' + fmtBs(costoBs - poolBs)}
+            </div>`;
+          if (alcanzaBs) poolBs -= costoBs;
+        }
+        html += `
+          <div class="asst-item">
+            <div class="asst-head">
+              <span class="asst-title">${escapeHtml(debt.acreedor)}</span>
+              <span class="asst-amt">${fmtUSD(pending)}</span>
+            </div>
+            <div class="asst-detail">
+              Pagas en <b>dólares</b> (tasa ${getTasaLabel(rateType)}).<br>
+              Dólares en efectivo disponibles: <b>${fmtUSD(usdCash)}</b><br>
+              ${cubre
+                ? `<span class="asst-ok">✅ Te alcanza con tus dólares.</span>`
+                : `<span class="asst-warn">⚠️ Te faltan ${fmtUSD(faltaUSD)} en dólares.</span>`}
+            </div>
+            ${buyHtml}
+          </div>`;
+      }
+    });
+
+    // Ahorro
+    const saved = totalSavings();
+    const goal = Number(data.savings.metaUSD) || 500;
+    const faltaAhorro = Math.max(0, goal - saved);
+    if (faltaAhorro > 0.01) {
+      const usaUSD = Math.min(poolUSD, faltaAhorro);
+      poolUSD -= usaUSD;
+      const faltaTrasUSD = faltaAhorro - usaUSD;
+      html += `
+        <div class="asst-item" style="border-color:#065f46;">
+          <div class="asst-head">
+            <span class="asst-title">🐷 Meta de Ahorro</span>
+            <span class="asst-amt asst-ok">${fmtUSD(faltaAhorro)}</span>
+          </div>
+          <div class="asst-detail">
+            Te falta para llegar a ${fmtUSD(goal)} (paralelo).<br>
+            ${faltaTrasUSD <= 0.01
+              ? `<span class="asst-ok">✅ Podrías cubrirlo con tus dólares disponibles.</span>`
+              : `Aún faltarían <b>${fmtUSD(faltaTrasUSD)}</b> tras pagar deudas. ≈ ${fmtBs(faltaTrasUSD * binRate)} a paralelo.`}
+          </div>
+        </div>`;
+    } else {
+      html += `
+        <div class="asst-item" style="border-color:#065f46;">
+          <div class="asst-head">
+            <span class="asst-title">🐷 Meta de Ahorro</span>
+            <span class="asst-amt asst-ok">✅ Completada</span>
+          </div>
+          <div class="asst-detail">¡Ya alcanzaste tu meta de ${fmtUSD(goal)}! 🎉</div>
+        </div>`;
+    }
+
+    if (!pendingDebts.length && faltaAhorro <= 0.01) {
+      html = '<div class="no-pay">¡Estás al día con todo! No tienes deudas pendientes y tu ahorro está completo 🎉</div>';
+    }
+
+    el.innerHTML = html;
   }
 
   function escapeHtml(str) {
