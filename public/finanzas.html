@@ -286,7 +286,7 @@
           montoUSD: 25.83, 
           nota: '', 
           tasa: 'bcv_usd',
-          moneda: 'usd',
+          moneda: 'bs',
           payments: [] 
         }
       ],
@@ -299,12 +299,40 @@
       const raw = localStorage.getItem(DATA_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.debts) && parsed.savings) return parsed;
+        if (parsed && Array.isArray(parsed.debts) && parsed.savings) {
+          return migrateData(parsed);
+        }
       }
     } catch (e) { /* ignore */ }
     const seeded = seedData();
     saveData(seeded);
     return seeded;
+  }
+
+  /* Migra datos viejos: asegura que cada deuda tenga 'tasa' y 'moneda'.
+     Corrige las deudas iniciales (Hermana -> Binance, Ubii -> BCV $ + Bs). */
+  function migrateData(d) {
+    let changed = false;
+    d.debts.forEach(debt => {
+      const nombre = (debt.acreedor || '').toLowerCase();
+      // Asignar tasa/moneda por defecto si faltan
+      if (!debt.tasa) {
+        if (nombre.includes('ubii')) debt.tasa = 'bcv_usd';
+        else debt.tasa = 'binance_usd';
+        changed = true;
+      }
+      if (!debt.moneda) {
+        debt.moneda = 'usd';
+        changed = true;
+      }
+      // Corrección específica para Ubii (estaba mal configurada en datos viejos)
+      if (nombre.includes('ubii')) {
+        if (debt.tasa !== 'bcv_usd') { debt.tasa = 'bcv_usd'; changed = true; }
+        if (debt.moneda !== 'bs') { debt.moneda = 'bs'; changed = true; }
+      }
+    });
+    if (changed) saveData(d);
+    return d;
   }
 
   function saveData(d) { localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
