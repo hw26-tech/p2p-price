@@ -774,7 +774,7 @@
         </div>
 
         <div class="mini-form" style="margin-top:0.6rem;">
-          <input type="text" id="ncn-${debt.id}" placeholder="Nombre de la compra (ej: Supermercado)">
+          <input type="text" id="ncn-${debt.id}" placeholder="Nombre (opcional)">
           <button onclick="addCompra('${debt.id}')">+ Compra</button>
         </div>
       </div>`;
@@ -1036,73 +1036,105 @@
     return rem;
   }
 
-  // Calcula el plan: reparte tu dinero entre deudas + ahorro, dejando colchón
+  // Calcula el plan: reparte tu dinero entre deudas + ahorro, dejando colchón.
+  // CLAVE: las deudas en Bs (Ubii) se valoran a tasa BCV; las deudas en dólares
+  // se pagan con efectivo y, si falta, comprando dólares a tasa paralelo (Binance).
   function computePlan() {
     const usdCash = totalUSDcash();
     const bsTotal = data.banks.filter(b => b.moneda === 'bs').reduce((s, b) => s + (Number(b.saldo) || 0), 0);
     const binRate = rates.binance_usd || 0;
-    const availableUSD = usdCash + (binRate > 0 ? bsTotal / binRate : 0);
-    const cushionUSD = availableUSD * CUSHION_PCT;
-    const afterCushion = Math.max(0, availableUSD - cushionUSD);
+    const bcvRate = rates.bcv_usd || 0;
 
-    const pendingDebts = data.debts.filter(d => debtPending(d) > 0.0001);
-    const totalPending = pendingDebts.reduce((s, d) => s + debtPending(d), 0);
+    // Colchón del 15% reservado en cada bolsa por separado (Bs y dólares)
+    const cushionBs = bsTotal * CUSHION_PCT;
+    const cushionUsdCash = usdCash * CUSHION_PCT;
+    let bsPool = bsTotal - cushionBs;       // bolívares disponibles tras colchón
+    let usdPool = usdCash - cushionUsdCash; // dólares en efectivo tras colchón
+
+    // Valor informativo del total disponible según la tasa
+    const availUsdBin = usdCash + (binRate > 0 ? bsTotal / binRate : 0); // a paralelo
+    const availUsdBcv = usdCash + (bcvRate > 0 ? bsTotal / bcvRate : 0); // a BCV
+    const cushionUSD = cushionUsdCash + (binRate > 0 ? cushionBs / binRate : 0);
+
+    // Primero las deudas en Bs (BCV), luego las de dólares
+    const pendingDebts = data.debts
+      .filter(d => debtPending(d) > 0.0001)
+      .slice()
+      .sort((a, b) => {
+        const aBs = (a.tasa || 'binance_usd') === 'bcv_usd' ? 0 : 1;
+        const bBs = (b.tasa || 'binance_usd') === 'bcv_usd' ? 0 : 1;
+        return aBs - bBs;
+      });
 
     const plan = [];
-    let usedForDebts = 0;
     pendingDebts.forEach(debt => {
       const pending = debtPending(debt);
-      let suggested;
-      if (afterCushion >= totalPending) {
-        suggested = pending; // alcanza para cubrir todas
-      } else if (totalPending > 0) {
-        suggested = afterCushion * (pending / totalPending); // reparte proporcional
+      const rateType = debt.tasa || 'binance_usd';
+      let suggestedUSD = 0, payBs = 0, fromCash = 0, buyUsd = 0;
+
+      if (rateType === 'bcv_usd') {
+        // Se paga en bolívares a tasa BCV
+        const needBs = pending * bcvRate;
+        payBs = Math.min(bsPool, needBs);
+        bsPool -= payBs;
+        suggestedUSD = bcvRate > 0 ? payBs / bcvRate : 0;
       } else {
-        suggested = 0;
+        // Se paga en dólares: efectivo primero, luego comprando a paralelo
+        fromCash = Math.min(usdPool, pending);
+        usdPool -= fromCash;
+        const rest = pending - fromCash;
+        const canBuy = binRate > 0 ? bsPool / binRate : 0;
+        buyUsd = Math.min(canBuy, rest);
+        bsPool -= buyUsd * binRate;
+        suggestedUSD = fromCash + buyUsd;
       }
-      suggested = Math.min(pending, Math.round(suggested * 100) / 100);
-      usedForDebts += suggested;
-      plan.push({ debt, pending, suggestedUSD: suggested });
+      suggestedUSD = Math.round(suggestedUSD * 100) / 100;
+      plan.push({ debt, pending, suggestedUSD, rateType, payBs, fromCash, buyUsd });
     });
 
-    const savingUSD = Math.max(0, Math.round((afterCushion - usedForDebts) * 100) / 100);
-    return { usdCash, bsTotal, binRate, availableUSD, cushionUSD, afterCushion, plan, savingUSD };
+    // Lo que sobra puede ir al ahorro (valorado a paralelo)
+    const leftoverUsd = usdPool + (binRate > 0 ? bsPool / binRate : 0);
+    const savingUSD = Math.max(0, Math.round(leftoverUsd * 100) / 100);
+
+    return { usdCash, bsTotal, binRate, bcvRate, availUsdBin, availUsdBcv, cushionUSD, plan, savingUSD };
   }
 
   function renderAssistant() {
     const el = document.getElementById('assistant');
     if (!ratesOk) { el.innerHTML = '<div class="no-pay">Esperando tasas para calcular tu plan...</div>'; return; }
 
-    const { usdCash, bsTotal, binRate, availableUSD, cushionUSD, plan, savingUSD } = computePlan();
+    const { usdCash, bsTotal, binRate, bcvRate, availUsdBin, availUsdBcv, cushionUSD, plan, savingUSD } = computePlan();
 
-    if (availableUSD <= 0.01) {
+    if (usdCash <= 0.01 && bsTotal <= 0.01) {
       el.innerHTML = '<div class="no-pay">👆 Escribe cuánto tienes en tus bancos arriba y te armo el plan de pagos automáticamente.</div>';
       return;
     }
 
+    const bsAsBcv = bcvRate > 0 ? bsTotal / bcvRate : 0;
+    const bsAsBin = binRate > 0 ? bsTotal / binRate : 0;
+
     let html = `
       <div class="asst-summary">
-        <div>💰 Tienes disponible: <b>${fmtUSD(availableUSD)}</b></div>
-        <div style="font-size:0.66rem;color:#64748b;">(${fmtUSD(usdCash)} en dólares + ${fmtBs(bsTotal)})</div>
-        <div style="margin-top:0.35rem;">🛡️ Colchón reservado: <b style="color:#fbbf24;">${fmtUSD(cushionUSD)}</b> <span style="font-size:0.62rem;color:#64748b;">(la app lo guarda para emergencias)</span></div>
+        <div>💰 Tienes disponible:</div>
+        <div style="font-size:0.72rem;margin-top:0.2rem;">💵 <b>${fmtUSD(usdCash)}</b> en efectivo</div>
+        <div style="font-size:0.72rem;">💴 <b style="color:#a78bfa;">${fmtBs(bsTotal)}</b> <span style="font-size:0.62rem;color:#64748b;">(${fmtUSD(bsAsBcv)} a BCV · ${fmtUSD(bsAsBin)} a paralelo)</span></div>
+        <div style="margin-top:0.35rem;">🛡️ Colchón reservado: <b style="color:#fbbf24;">${fmtUSD(cushionUSD)}</b> <span style="font-size:0.62rem;color:#64748b;">(15%, guardado para emergencias)</span></div>
       </div>`;
 
-    plan.forEach(({ debt, pending, suggestedUSD }) => {
-      const rateType = debt.tasa || 'binance_usd';
-      const rateVal = rates[rateType] || 0;
+    plan.forEach(({ debt, pending, suggestedUSD, rateType, payBs, fromCash, buyUsd }) => {
       let detail = '';
+      let pendLabel = `Pendiente total: ${fmtUSD(pending)}`;
 
-      if (debt.moneda === 'bs') {
-        const bs = suggestedUSD * rateVal;
-        detail = `Abona <b style="color:#a78bfa;">${fmtBs(bs)}</b> (${fmtUSD(suggestedUSD)}) a tasa ${getTasaLabel(rateType)}.`;
+      if (rateType === 'bcv_usd') {
+        pendLabel += ` (${fmtBs(pending * bcvRate)} a BCV)`;
+        detail = payBs > 0.01
+          ? `Paga <b style="color:#a78bfa;">${fmtBs(payBs)}</b> en bolívares (≈ ${fmtUSD(suggestedUSD)} a BCV $).`
+          : '';
       } else {
-        if (usdCash >= suggestedUSD) {
-          detail = `Paga <b>${fmtUSD(suggestedUSD)}</b> con tus dólares en efectivo.`;
-        } else {
-          const fromCash = Math.min(usdCash, suggestedUSD);
-          const buy = suggestedUSD - fromCash;
-          detail = `Abona <b>${fmtUSD(suggestedUSD)}</b>. ${fromCash > 0 ? 'Usa ' + fmtUSD(fromCash) + ' en efectivo y compra ' : 'Compra '}<b>${fmtUSD(buy)}</b> ≈ <b style="color:#a78bfa;">${fmtBs(buy * binRate)}</b> a paralelo.`;
-        }
+        const parts = [];
+        if (fromCash > 0.01) parts.push(`usa <b>${fmtUSD(fromCash)}</b> en efectivo`);
+        if (buyUsd > 0.01) parts.push(`compra <b>${fmtUSD(buyUsd)}</b> ≈ <b style="color:#a78bfa;">${fmtBs(buyUsd * binRate)}</b> a paralelo`);
+        detail = parts.length ? `Para abonar <b>${fmtUSD(suggestedUSD)}</b>: ${parts.join(' y ')}.` : '';
       }
 
       const btn = suggestedUSD > 0.01
@@ -1115,7 +1147,7 @@
             <span class="asst-title">${escapeHtml(debt.acreedor)}</span>
             <span class="asst-amt">${fmtUSD(suggestedUSD)}</span>
           </div>
-          <div class="asst-detail">Pendiente total: ${fmtUSD(pending)}<br>${detail}</div>
+          <div class="asst-detail">${pendLabel}${detail ? '<br>' + detail : ''}</div>
           ${btn}
         </div>`;
     });
@@ -1285,8 +1317,9 @@
     const debt = data.debts.find(d => d.id === debtId);
     if (!debt || !isCredito(debt)) return;
     const input = document.getElementById('ncn-' + debtId);
-    const nombre = (input.value || '').trim();
-    if (!nombre) { alert('Escribe el nombre de la compra'); return; }
+    let nombre = (input.value || '').trim();
+    // El nombre no importa: si lo dejas vacío, se numera la compra automáticamente
+    if (!nombre) nombre = 'Compra ' + ((debt.compras ? debt.compras.length : 0) + 1);
     debt.compras.push({ id: id(), nombre: nombre, cuotas: [] });
     saveData(data);
     render();
