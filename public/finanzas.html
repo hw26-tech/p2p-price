@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#020617">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Mis Finanzas</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #020617; color: #f8fafc; min-height: 100vh; padding: 1rem;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+    .app-cover { display: flex; flex-direction: column; align-items: center; padding: 1.2rem 0 0.8rem; text-align: center; position: relative; }
+    .app-icon {
+      width: 70px; height: 70px; background: #000; border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 38px; color: #fff; box-shadow: 0 0 20px rgba(59,130,246,0.3);
+      margin-bottom: 0.8rem; border: 1px solid rgba(255,255,255,0.1);
+    }
+    h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; color: #fff; }
+    .subtitle { color: #64748b; font-size: 0.8rem; }
+    .logout-btn {
+      position: absolute; top: 0.5rem; right: 0;
+      background: rgba(30,41,59,0.5); border: 1px solid #334155;
+      color: #94a3b8; padding: 0.45rem 0.8rem; border-radius: 10px;
+      font-size: 0.72rem; font-weight: 600; cursor: pointer;
+    }
+    .logout-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+    .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 1.25rem; padding: 1.25rem; margin-bottom: 1rem; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .section-title { font-size: 0.75rem; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-dot { display: flex; align-items: center; gap: 0.35rem; font-size: 0.68rem; font-weight: 600; color: #64748b; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; }
+    .dot.ok { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+    .dot.error { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+    .dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* Tasa box */
+    .rate-box { display: flex; justify-content: space-between; align-items: center; }
+    .rate-val { font-size: 1.6rem; font-weight: 800; color: #3b82f6; font-variant-numeric: tabular-nums; }
+    .rate-sub { font-size: 0.7rem; color: #64748b; }
+
+    /* Resumen */
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .summary-item { background: #020617; border: 1px solid #1e293b; border-radius: 0.85rem; padding: 0.8rem; text-align: center; }
+    .summary-item .s-label { font-size: 0.62rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+    .summary-item .s-usd { font-size: 1.25rem; font-weight: 800; color: #fff; }
+    .summary-item .s-bs { font-size: 0.72rem; color: #94a3b8; margin-top: 0.1rem; }
+    .summary-item.danger .s-usd { color: #f87171; }
+    .summary-item.ok .s-usd { color: #34d399; }
+
+    /* Debt item */
+    .debt { background: #020617; border: 1px solid #1e293b; border-radius: 1rem; padding: 1rem; margin-bottom: 0.85rem; }
+    .debt-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+    .debt-name { font-size: 1rem; font-weight: 700; color: #fff; }
+    .debt-note { font-size: 0.66rem; color: #64748b; margin-top: 0.15rem; }
+    .debt-del { background: none; border: none; color: #475569; font-size: 0.95rem; cursor: pointer; padding: 0.1rem 0.3rem; }
+    .debt-del:hover { color: #ef4444; }
+    .debt-rows { margin-top: 0.7rem; }
+    .d-row { display: flex; justify-content: space-between; align-items: baseline; padding: 0.3rem 0; }
+    .d-row .dr-label { font-size: 0.74rem; color: #94a3b8; }
+    .d-row .dr-usd { font-size: 0.9rem; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+    .d-row .dr-bs { font-size: 0.66rem; color: #64748b; margin-left: 0.45rem; }
+    .d-row.pending .dr-usd { color: #fbbf24; }
+    .d-row.paid-off .dr-usd { color: #34d399; }
+
+    .debt-bar-bg { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; margin: 0.6rem 0 0.2rem; }
+    .debt-bar-fill { height: 100%; background: #10b981; transition: 0.5s; }
+    .debt-pct { font-size: 0.62rem; color: #64748b; text-align: right; }
+
+    /* Payments list */
+    .payments { margin-top: 0.7rem; border-top: 1px dashed #1e293b; padding-top: 0.6rem; }
+    .payments-title { font-size: 0.64rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.4rem; }
+    .pay-row { display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0; font-size: 0.74rem; }
+    .pay-row .pay-date { color: #64748b; }
+    .pay-row .pay-amt { color: #34d399; font-weight: 600; }
+    .pay-row .pay-bs { color: #475569; font-size: 0.64rem; margin-left: 0.35rem; }
+    .pay-del { background: none; border: none; color: #475569; cursor: pointer; font-size: 0.7rem; margin-left: 0.4rem; }
+    .pay-del:hover { color: #ef4444; }
+    .no-pay { font-size: 0.7rem; color: #475569; font-style: italic; }
+
+    /* Abono form */
+    .abono-form { display: flex; gap: 0.45rem; margin-top: 0.7rem; }
+    .abono-form input {
+      flex: 1; padding: 0.55rem 0.7rem; background: #0f172a; border: 1px solid #334155;
+      border-radius: 0.65rem; color: #fff; font-size: 0.85rem; outline: none; min-width: 0;
+    }
+    .abono-form input:focus { border-color: #3b82f6; }
+    .abono-form button {
+      padding: 0.55rem 0.85rem; border-radius: 0.65rem; border: none;
+      background: #1e293b; color: #34d399; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .abono-form button:hover { background: #16361f; }
+
+    /* Add debt form */
+    .add-form { display: flex; flex-direction: column; gap: 0.6rem; }
+    .add-row { display: flex; gap: 0.5rem; }
+    .add-form input {
+      width: 100%; padding: 0.65rem 0.75rem; background: #020617; border: 1px solid #334155;
+      border-radius: 0.75rem; color: #fff; font-size: 0.9rem; outline: none; min-width: 0;
+    }
+    .add-form input:focus { border-color: #3b82f6; }
+    .btn-primary {
+      width: 100%; padding: 0.7rem; border-radius: 0.75rem; border: none;
+      background: #3b82f6; color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-primary:hover { background: #2563eb; }
+
+    /* Savings */
+    .save-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem; }
+    .save-current { font-size: 1.5rem; font-weight: 800; color: #34d399; }
+    .save-goal { font-size: 0.8rem; color: #64748b; }
+    .save-bs { font-size: 0.72rem; color: #94a3b8; margin-bottom: 0.8rem; }
+    .bar-bg { width: 100%; height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg,#10b981,#34d399); transition: 0.5s; }
+    .save-pct { font-size: 0.72rem; color: #34d399; font-weight: 700; text-align: right; margin-top: 0.35rem; }
+    .save-list { margin-top: 0.9rem; }
+
+    .ts { text-align: center; font-size: 0.7rem; color: #475569; margin-bottom: 1rem; }
+    footer { text-align: center; padding: 1.5rem 0; color: #334155; font-size: 0.7rem; }
+    .loader-screen { position: fixed; inset: 0; background: #020617; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem; z-index: 999; }
+  </style>
+</head>
+<body>
+<div class="loader-screen" id="loaderScreen">Verificando acceso…</div>
+
+<div class="container" id="app" style="display:none;">
+  <div class="app-cover">
+    <button class="logout-btn" onclick="logout()">Salir</button>
+    <div class="app-icon">💰</div>
+    <h1>Mis Finanzas</h1>
+    <p class="subtitle">Gestión privada • Deudas y ahorro</p>
+  </div>
+
+  <!-- Tasa Binance -->
+  <div class="card">
+    <div class="card-header">
+      <div class="section-title">Tasa Binance P2P</div>
+      <div class="status-dot"><div class="dot loading" id="dotRate"></div><span id="lblRate">Cargando...</span></div>
+    </div>
+    <div class="rate-box">
+      <div>
+        <div class="rate-val" id="rateVal">—</div>
+        <div class="rate-sub">Promedio compra/venta • por USD</div>
+      </div>
+      <button class="logout-btn" style="position:static;border-color:#334155;color:#3b82f6;" onclick="refreshRate()">⚡ Actualizar</button>
+    </div>
+  </div>
+
+  <!-- Resumen -->
+  <div class="card">
+    <div class="card-header"><div class="section-title">Resumen</div></div>
+    <div class="summary-grid">
+      <div class="summary-item danger">
+        <div class="s-label">Deuda pendiente</div>
+        <div class="s-usd" id="sumDebtUSD">—</div>
+        <div class="s-bs" id="sumDebtBS">—</div>
+      </div>
+      <div class="summary-item ok">
+        <div class="s-label">Ahorro actual</div>
+        <div class="s-usd" id="sumSaveUSD">—</div>
+        <div class="s-bs" id="sumSaveBS">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deudas -->
+  <div class="card">
+    <div class="card-header"><div class="section-title">Deudas</div></div>
+    <div id="debtList"></div>
+  </div>
+
+  <!-- Agregar deuda -->
+  <div class="card">
+    <div class="card-header"><div class="section-title">Agregar nueva deuda</div></div>
+    <div class="add-form">
+      <input type="text" id="newDebtName" placeholder="Nombre del acreedor">
+      <div class="add-row">
+        <input type="number" id="newDebtUSD" placeholder="Monto en USD" step="0.01" min="0">
+        <input type="text" id="newDebtNote" placeholder="Nota (opcional)">
+      </div>
+      <button class="btn-primary" onclick="addDebt()">+ Agregar deuda</button>
+    </div>
+  </div>
+
+  <!-- Ahorro -->
+  <div class="card">
+    <div class="card-header"><div class="section-title">Ahorro</div></div>
+    <div class="save-head">
+      <span class="save-current" id="saveCurrent">—</span>
+      <span class="save-goal">Meta: <span id="saveGoal">$ 500,00</span></span>
+    </div>
+    <div class="save-bs" id="saveBs">—</div>
+    <div class="bar-bg"><div class="bar-fill" id="saveBar" style="width:0%;"></div></div>
+    <div class="save-pct" id="savePct">0%</div>
+
+    <div class="abono-form">
+      <input type="number" id="newSaveUSD" placeholder="Agregar ahorro (USD)" step="0.01" min="0">
+      <button onclick="addSaving()">+ Ahorrar</button>
+    </div>
+
+    <div class="save-list" id="saveList"></div>
+  </div>
+
+  <div class="ts">Tasa actualizada: <span id="lastUpd">—</span></div>
+  <footer>Mis Finanzas • Privado</footer>
+</div>
+
+<script>
+  const TOKEN_KEY = 'finanzas_token';
+  const DATA_KEY = 'finanzas_data';
+  let rate = 0;              // tasa Binance promedio (Bs por USD)
+  let rateOk = false;
+  let data = null;
+  let rateTimer = null;
+
+  /* ---------- AUTH GUARD ---------- */
+  async function guard() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) { window.location.href = '/login.html'; return false; }
+    try {
+      const r = await fetch('/api/auth', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!r.ok) { localStorage.removeItem(TOKEN_KEY); window.location.href = '/login.html'; return false; }
+      return true;
+    } catch (e) {
+      // En caso de error de red, permitimos continuar si hay token (offline-friendly)
+      return true;
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/login.html';
+  }
+
+  /* ---------- DATA ---------- */
+  function seedData() {
+    return {
+      debts: [
+        { id: id(), acreedor: 'Hermana', montoUSD: 200, nota: 'USDT Binance', payments: [] },
+        { id: id(), acreedor: 'Ubii Créditos', montoUSD: 25.83, nota: '', payments: [] }
+      ],
+      savings: { metaUSD: 500, deposits: [] }
+    };
+  }
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(DATA_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.debts) && parsed.savings) return parsed;
+      }
+    } catch (e) { /* ignore */ }
+    const seeded = seedData();
+    saveData(seeded);
+    return seeded;
+  }
+
+  function saveData(d) { localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
+  function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  /* ---------- FORMAT ---------- */
+  function fmtUSD(v) {
+    if (v === null || v === undefined || isNaN(v)) return '$ —';
+    return '$\u00A0' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtBs(v) {
+    if (!rateOk || v === null || v === undefined || isNaN(v)) return 'Bs —';
+    return 'Bs\u00A0' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function toBs(usd) { return usd * rate; }
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+           ' ' + d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /* ---------- DEBT CALCS ---------- */
+  function debtPaid(debt) { return debt.payments.reduce((s, p) => s + Number(p.montoUSD || 0), 0); }
+  function debtPending(debt) { return Math.max(0, Number(debt.montoUSD) - debtPaid(debt)); }
+  function totalPending() { return data.debts.reduce((s, d) => s + debtPending(d), 0); }
+  function totalSavings() { return data.savings.deposits.reduce((s, p) => s + Number(p.montoUSD || 0), 0); }
+
+  /* ---------- RATE ---------- */
+  async function refreshRate() {
+    setRateStatus('loading');
+    try {
+      const r = await fetch('/api/binance_ves?t=' + Date.now(), { cache: 'no-store' });
+      const d = await r.json();
+      if (d.success && (d.buy || d.sell)) {
+        const vals = [d.buy, d.sell].filter(x => x);
+        rate = vals.reduce((a, b) => a + b, 0) / vals.length;
+        rateOk = true;
+        document.getElementById('rateVal').textContent = fmtBs(rate);
+        document.getElementById('lastUpd').textContent = new Date().toLocaleTimeString('es-VE');
+        setRateStatus('ok');
+      } else {
+        setRateStatus('error');
+      }
+    } catch (e) {
+      setRateStatus('error');
+    }
+    render();
+  }
+
+  function setRateStatus(state) {
+    const dot = document.getElementById('dotRate');
+    const lbl = document.getElementById('lblRate');
+    dot.className = 'dot ' + state;
+    lbl.textContent = state === 'ok' ? 'En línea' : state === 'loading' ? 'Cargando...' : 'Sin datos';
+  }
+
+  /* ---------- RENDER ---------- */
+  function render() {
+    renderSummary();
+    renderDebts();
+    renderSavings();
+  }
+
+  function renderSummary() {
+    const debt = totalPending();
+    const save = totalSavings();
+    document.getElementById('sumDebtUSD').textContent = fmtUSD(debt);
+    document.getElementById('sumDebtBS').textContent = fmtBs(toBs(debt));
+    document.getElementById('sumSaveUSD').textContent = fmtUSD(save);
+    document.getElementById('sumSaveBS').textContent = fmtBs(toBs(save));
+  }
+
+  function renderDebts() {
+    const list = document.getElementById('debtList');
+    if (!data.debts.length) {
+      list.innerHTML = '<div class="no-pay">No tienes deudas registradas 🎉</div>';
+      return;
+    }
+    list.innerHTML = data.debts.map(debt => {
+      const paid = debtPaid(debt);
+      const pending = debtPending(debt);
+      const monto = Number(debt.montoUSD);
+      const pct = monto > 0 ? Math.min(100, (paid / monto) * 100) : 0;
+      const isPaid = pending <= 0.0001;
+
+      const paymentsHtml = debt.payments.length
+        ? debt.payments.slice().reverse().map(p => `
+            <div class="pay-row">
+              <span class="pay-date">${fmtDate(p.fecha)}</span>
+              <span>
+                <span class="pay-amt">${fmtUSD(p.montoUSD)}</span>
+                <span class="pay-bs">${fmtBs(toBs(p.montoUSD))}</span>
+                <button class="pay-del" onclick="deletePayment('${debt.id}','${p.id}')">✕</button>
+              </span>
+            </div>`).join('')
+        : '<div class="no-pay">Sin abonos aún</div>';
+
+      return `
+        <div class="debt">
+          <div class="debt-top">
+            <div>
+              <div class="debt-name">${escapeHtml(debt.acreedor)}</div>
+              ${debt.nota ? `<div class="debt-note">${escapeHtml(debt.nota)}</div>` : ''}
+            </div>
+            <button class="debt-del" title="Eliminar deuda" onclick="deleteDebt('${debt.id}')">🗑️</button>
+          </div>
+
+          <div class="debt-rows">
+            <div class="d-row">
+              <span class="dr-label">Monto total</span>
+              <span><span class="dr-usd">${fmtUSD(monto)}</span><span class="dr-bs">${fmtBs(toBs(monto))}</span></span>
+            </div>
+            <div class="d-row">
+              <span class="dr-label">Abonado</span>
+              <span><span class="dr-usd">${fmtUSD(paid)}</span><span class="dr-bs">${fmtBs(toBs(paid))}</span></span>
+            </div>
+            <div class="d-row ${isPaid ? 'paid-off' : 'pending'}">
+              <span class="dr-label">${isPaid ? 'Saldado ✅' : 'Saldo pendiente'}</span>
+              <span><span class="dr-usd">${fmtUSD(pending)}</span><span class="dr-bs">${fmtBs(toBs(pending))}</span></span>
+            </div>
+          </div>
+
+          <div class="debt-bar-bg"><div class="debt-bar-fill" style="width:${pct}%;"></div></div>
+          <div class="debt-pct">${pct.toFixed(1)}% pagado</div>
+
+          <div class="payments">
+            <div class="payments-title">Historial de abonos</div>
+            ${paymentsHtml}
+          </div>
+
+          <div class="abono-form">
+            <input type="number" id="abono-${debt.id}" placeholder="Abono (USD)" step="0.01" min="0">
+            <button onclick="addPayment('${debt.id}')">+ Abonar</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderSavings() {
+    const save = totalSavings();
+    const goal = Number(data.savings.metaUSD) || 500;
+    const pct = goal > 0 ? Math.min(100, (save / goal) * 100) : 0;
+    document.getElementById('saveCurrent').textContent = fmtUSD(save);
+    document.getElementById('saveGoal').textContent = fmtUSD(goal);
+    document.getElementById('saveBs').textContent = fmtBs(toBs(save)) + ' de ' + fmtBs(toBs(goal));
+    document.getElementById('saveBar').style.width = pct + '%';
+    document.getElementById('savePct').textContent = pct.toFixed(1) + '% de la meta';
+
+    const list = document.getElementById('saveList');
+    list.innerHTML = data.savings.deposits.length
+      ? '<div class="payments-title">Historial de ahorros</div>' +
+        data.savings.deposits.slice().reverse().map(p => `
+          <div class="pay-row">
+            <span class="pay-date">${fmtDate(p.fecha)}</span>
+            <span>
+              <span class="pay-amt">${fmtUSD(p.montoUSD)}</span>
+              <span class="pay-bs">${fmtBs(toBs(p.montoUSD))}</span>
+              <button class="pay-del" onclick="deleteSaving('${p.id}')">✕</button>
+            </span>
+          </div>`).join('')
+      : '<div class="no-pay">Aún no has registrado ahorros</div>';
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /* ---------- ACTIONS ---------- */
+  function addDebt() {
+    const name = document.getElementById('newDebtName').value.trim();
+    const usd = parseFloat(document.getElementById('newDebtUSD').value);
+    const note = document.getElementById('newDebtNote').value.trim();
+    if (!name) { alert('Ingresa el nombre del acreedor'); return; }
+    if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto válido en USD'); return; }
+    data.debts.push({ id: id(), acreedor: name, montoUSD: usd, nota: note, payments: [] });
+    saveData(data);
+    document.getElementById('newDebtName').value = '';
+    document.getElementById('newDebtUSD').value = '';
+    document.getElementById('newDebtNote').value = '';
+    render();
+  }
+
+  function deleteDebt(debtId) {
+    if (!confirm('¿Eliminar esta deuda y todo su historial?')) return;
+    data.debts = data.debts.filter(d => d.id !== debtId);
+    saveData(data);
+    render();
+  }
+
+  function addPayment(debtId) {
+    const input = document.getElementById('abono-' + debtId);
+    const usd = parseFloat(input.value);
+    if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto de abono válido'); return; }
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt) return;
+    debt.payments.push({ id: id(), montoUSD: usd, fecha: new Date().toISOString() });
+    saveData(data);
+    render();
+  }
+
+  function deletePayment(debtId, payId) {
+    const debt = data.debts.find(d => d.id === debtId);
+    if (!debt) return;
+    debt.payments = debt.payments.filter(p => p.id !== payId);
+    saveData(data);
+    render();
+  }
+
+  function addSaving() {
+    const usd = parseFloat(document.getElementById('newSaveUSD').value);
+    if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto válido para ahorrar'); return; }
+    data.savings.deposits.push({ id: id(), montoUSD: usd, fecha: new Date().toISOString() });
+    saveData(data);
+    document.getElementById('newSaveUSD').value = '';
+    render();
+  }
+
+  function deleteSaving(depId) {
+    data.savings.deposits = data.savings.deposits.filter(p => p.id !== depId);
+    saveData(data);
+    render();
+  }
+
+  /* ---------- INIT ---------- */
+  (async function init() {
+    const ok = await guard();
+    if (!ok) return;
+    document.getElementById('loaderScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    data = loadData();
+    render();
+    await refreshRate();
+    // refresca la tasa cada 60s
+    rateTimer = setInterval(refreshRate, 60000);
+  })();
+</script>
+</body>
+</html>
