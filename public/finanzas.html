@@ -1372,11 +1372,10 @@
     const rowMerCuotas = document.getElementById('rowMercantilCuotas');
     const merAdvanced = document.getElementById('merAdvanced');
     const rowUbiiFecha = document.getElementById('rowUbiiFecha');
-    const comRow = comPct.closest('.add-row');
     
     if (ent === 'mercantil') {
       monto.placeholder = 'Monto a solicitar (Bs)';
-      if (comRow) comRow.style.display = 'none'; // la comisión va en el bloque avanzado
+      comPct.style.display = 'none'; // la comisión va en el bloque avanzado
       rowMerCuotas.style.display = 'flex';
       merAdvanced.style.display = 'block';
       rowUbiiFecha.style.display = 'none';
@@ -1385,7 +1384,7 @@
       monto.placeholder = 'Monto a solicitar (USD)';
       comPct.placeholder = 'Comisión %';
       comPct.value = '8.99';
-      if (comRow) comRow.style.display = 'flex';
+      comPct.style.display = 'inline-block';
       rowMerCuotas.style.display = 'none';
       merAdvanced.style.display = 'none';
       rowUbiiFecha.style.display = 'flex';
