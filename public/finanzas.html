@@ -330,7 +330,7 @@
           <option value="bcv_usd">BCV Dólar</option>
           <option value="bcv_eur">BCV Euro</option>
         </select>
-        <select id="newDebtMoneda">
+        <select id="newDebtMoneda" onchange="toggleDebtMoneda()">
           <option value="usd">Solo en dólares</option>
           <option value="bs">También en Bs</option>
         </select>
@@ -1294,7 +1294,7 @@
   /* ---------- ACTIONS ---------- */
   function addDebt() {
     const name = document.getElementById('newDebtName').value.trim();
-    const usd = parseFloat(document.getElementById('newDebtUSD').value);
+    const montoInput = parseFloat(document.getElementById('newDebtUSD').value);
     const note = document.getElementById('newDebtNote').value.trim();
     const tasa = document.getElementById('newDebtTasa').value;
     const moneda = document.getElementById('newDebtMoneda').value;
@@ -1315,11 +1315,25 @@
         compras: []
       });
     } else {
-      if (isNaN(usd) || usd <= 0) { alert('Ingresa un monto válido en USD'); return; }
+      if (isNaN(montoInput) || montoInput <= 0) { 
+        alert('Ingresa un monto válido'); 
+        return; 
+      }
+      
+      // Si la moneda es Bs, convertir a USD usando la tasa seleccionada
+      let montoUSD = montoInput;
+      if (moneda === 'bs') {
+        montoUSD = toUSD(montoInput, tasa);
+        if (montoUSD <= 0) {
+          alert('No se pudo convertir a USD. Verifica que la tasa esté disponible.');
+          return;
+        }
+      }
+      
       data.debts.push({
         id: id(),
         acreedor: name,
-        montoUSD: usd,
+        montoUSD: montoUSD,
         nota: note,
         tasa: tasa,
         moneda: moneda,
@@ -1351,6 +1365,17 @@
     } else {
       row.style.display = 'flex';
       hint.style.display = 'none';
+    }
+  }
+
+  // Cambia el placeholder del monto según la moneda seleccionada
+  function toggleDebtMoneda() {
+    const moneda = document.getElementById('newDebtMoneda').value;
+    const input = document.getElementById('newDebtUSD');
+    if (moneda === 'bs') {
+      input.placeholder = 'Monto en Bs';
+    } else {
+      input.placeholder = 'Monto en USD';
     }
   }
 
