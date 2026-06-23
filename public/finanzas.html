@@ -290,14 +290,19 @@
         <input type="number" id="solCuotas" placeholder="N° de cuotas (1-6)" step="1" min="1" max="6" value="6">
         <input type="date" id="solFecha">
       </div>
-      <div class="add-row" id="rowMercantilTasas" style="display:none;">
-        <input type="number" id="solTasaNom" placeholder="Tasa nominal % anual" step="0.01" min="0" value="60">
-        <input type="number" id="solTasaEf" placeholder="Tasa efectiva % anual" step="0.01" min="0" value="60">
-      </div>
-      <div class="add-row" id="rowMercantilComMora" style="display:none;">
-        <input type="number" id="solComFlat" placeholder="Comisión %" step="0.01" min="0" value="5">
-        <input type="number" id="solMora" placeholder="Mora %" step="0.01" min="0" value="3">
-      </div>
+      <details id="merAdvanced" style="display:none;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:0.4rem 0.6rem;">
+        <summary style="cursor:pointer;font-size:0.72rem;color:#94a3b8;user-select:none;">⚙️ Tasas e intereses (avanzado — ya vienen llenas)</summary>
+        <div style="margin-top:0.5rem;display:flex;flex-direction:column;gap:0.4rem;">
+          <div class="add-row">
+            <input type="number" id="solTasaNom" placeholder="Tasa nominal % anual" step="0.01" min="0" value="60">
+            <input type="number" id="solTasaEf" placeholder="Tasa efectiva % anual" step="0.01" min="0" value="60">
+          </div>
+          <div class="add-row">
+            <input type="number" id="solComFlat" placeholder="Comisión %" step="0.01" min="0" value="5">
+            <input type="number" id="solMora" placeholder="Mora %" step="0.01" min="0" value="3">
+          </div>
+        </div>
+      </details>
       <div class="add-row" id="rowUbiiFecha" style="display:flex;">
         <input type="date" id="solFechaUbii">
       </div>
@@ -758,7 +763,7 @@
                   <div class="cuota-label">Cuota ${i + 1}</div>
                   <div class="cuota-sub">${estado} • ${fmtBs(cuotaBsTotal(c, tasaType))}</div>
                 </div>
-                <div class="cuota-monto ${montoClass}">${fmtUSD(cuotaMonto(c))}</div>
+                <div class="cuota-monto ${montoClass}" title="Total cuota: ${fmtUSD(cuotaMonto(c))}">${fmtUSD(cuotaPending(c))}</div>
                 <button class="compra-del" title="Eliminar cuota" onclick="deleteCuota('${debt.id}','${co.id}','${c.id}')">✕</button>
               </div>
               ${abonarRow}`;
@@ -1365,26 +1370,24 @@
     const comPct = document.getElementById('solComisionPct');
     const hint = document.getElementById('solHint');
     const rowMerCuotas = document.getElementById('rowMercantilCuotas');
-    const rowMerTasas = document.getElementById('rowMercantilTasas');
-    const rowMerComMora = document.getElementById('rowMercantilComMora');
+    const merAdvanced = document.getElementById('merAdvanced');
     const rowUbiiFecha = document.getElementById('rowUbiiFecha');
+    const comRow = comPct.closest('.add-row');
     
     if (ent === 'mercantil') {
       monto.placeholder = 'Monto a solicitar (Bs)';
-      comPct.placeholder = 'Comisión %';
-      comPct.value = '5';
+      if (comRow) comRow.style.display = 'none'; // la comisión va en el bloque avanzado
       rowMerCuotas.style.display = 'flex';
-      rowMerTasas.style.display = 'flex';
-      rowMerComMora.style.display = 'flex';
+      merAdvanced.style.display = 'block';
       rowUbiiFecha.style.display = 'none';
-      hint.textContent = '💡 Mercantil: monto en Bs + tasa nominal 60% anual (5% mensual sobre saldo) + comisión 5% + mora 3%. Calcula cuotas fijas automáticamente.';
+      hint.textContent = '💡 Mercantil: pon el monto en Bs y el N° de cuotas. Las tasas ya vienen llenas (60% anual, comisión 5%, mora 3%). La app calcula la cuota fija sola.';
     } else {
       monto.placeholder = 'Monto a solicitar (USD)';
       comPct.placeholder = 'Comisión %';
       comPct.value = '8.99';
+      if (comRow) comRow.style.display = 'flex';
       rowMerCuotas.style.display = 'none';
-      rowMerTasas.style.display = 'none';
-      rowMerComMora.style.display = 'none';
+      merAdvanced.style.display = 'none';
       rowUbiiFecha.style.display = 'flex';
       hint.textContent = '💡 Ubii: monto en USD (BCV) + comisión 8,99% = 2 cuotas iguales cada 15 días.';
     }
