@@ -279,18 +279,29 @@
     <div class="card-header"><div class="section-title">💳 Solicitar crédito</div></div>
     <div class="add-form">
       <select id="solEntidad" onchange="toggleSolEntidad()">
-        <option value="ubii">Ubii — paga en Bs a tasa BCV, 2 cuotas cada 15 días</option>
-        <option value="mercantil">Mercantil — préstamo en Bs, cuotas mensuales (hasta 6)</option>
+        <option value="ubii">Ubii — 2 cuotas cada 15 días (BCV)</option>
+        <option value="mercantil">Mercantil — préstamo en Bs, cuotas mensuales (1-6)</option>
       </select>
       <div class="add-row">
         <input type="number" id="solMonto" placeholder="Monto a solicitar (USD)" step="0.01" min="0">
-        <input type="number" id="solComision" placeholder="Comisión %" step="0.01" min="0" value="8.99">
+        <input type="number" id="solComisionPct" placeholder="Comisión %" step="0.01" min="0" value="8.99">
       </div>
-      <div class="add-row">
-        <input type="number" id="solCuotas" placeholder="N° de cuotas" step="1" min="1" value="2">
+      <div class="add-row" id="rowMercantilCuotas" style="display:none;">
+        <input type="number" id="solCuotas" placeholder="N° de cuotas (1-6)" step="1" min="1" max="6" value="6">
         <input type="date" id="solFecha">
       </div>
-      <p id="solHint" style="font-size:0.66rem;color:#a78bfa;margin:0;">💡 Ubii: el monto es en USD (BCV), se le suma la comisión % y se divide en cuotas cada 15 días.</p>
+      <div class="add-row" id="rowMercantilTasas" style="display:none;">
+        <input type="number" id="solTasaNom" placeholder="Tasa nominal % anual" step="0.01" min="0" value="60">
+        <input type="number" id="solTasaEf" placeholder="Tasa efectiva % anual" step="0.01" min="0" value="60">
+      </div>
+      <div class="add-row" id="rowMercantilComMora" style="display:none;">
+        <input type="number" id="solComFlat" placeholder="Comisión %" step="0.01" min="0" value="5">
+        <input type="number" id="solMora" placeholder="Mora %" step="0.01" min="0" value="3">
+      </div>
+      <div class="add-row" id="rowUbiiFecha" style="display:flex;">
+        <input type="date" id="solFechaUbii">
+      </div>
+      <p id="solHint" style="font-size:0.66rem;color:#a78bfa;margin:0;">💡 Ubii: monto en USD (BCV) + comisión 8,99% = 2 cuotas iguales cada 15 días.</p>
       <button class="btn-primary" onclick="solicitarCredito()">＋ Solicitar crédito</button>
     </div>
   </div>
@@ -785,10 +796,6 @@
         </div>
 
         <div class="debt-rows">
-          <div class="d-row">
-            <span class="dr-label">Total del crédito</span>
-            <span><span class="dr-usd">${fmtUSD(total)}</span><span class="dr-bs">${fmtBs(toBs(total, tasaType))}</span></span>
-          </div>
           <div class="d-row">
             <span class="dr-label">Abonado</span>
             <span><span class="dr-usd">${fmtUSD(paid)}</span><span class="dr-bs">${fmtBs(toBs(paid, tasaType))}</span></span>
@@ -1355,21 +1362,31 @@
   function toggleSolEntidad() {
     const ent = document.getElementById('solEntidad').value;
     const monto = document.getElementById('solMonto');
-    const com = document.getElementById('solComision');
-    const cuotas = document.getElementById('solCuotas');
+    const comPct = document.getElementById('solComisionPct');
     const hint = document.getElementById('solHint');
+    const rowMerCuotas = document.getElementById('rowMercantilCuotas');
+    const rowMerTasas = document.getElementById('rowMercantilTasas');
+    const rowMerComMora = document.getElementById('rowMercantilComMora');
+    const rowUbiiFecha = document.getElementById('rowUbiiFecha');
+    
     if (ent === 'mercantil') {
       monto.placeholder = 'Monto a solicitar (Bs)';
-      com.placeholder = 'Comisión flat (Bs)';
-      com.value = '50';
-      cuotas.value = '6';
-      hint.textContent = '💡 Mercantil: el monto es en Bs, comisión flat en Bs, cuotas mensuales (1 por mes, hasta 6). Se queda fijo en Bs.';
+      comPct.placeholder = 'Comisión %';
+      comPct.value = '5';
+      rowMerCuotas.style.display = 'flex';
+      rowMerTasas.style.display = 'flex';
+      rowMerComMora.style.display = 'flex';
+      rowUbiiFecha.style.display = 'none';
+      hint.textContent = '💡 Mercantil: monto en Bs + tasa nominal 60% anual (5% mensual sobre saldo) + comisión 5% + mora 3%. Calcula cuotas fijas automáticamente.';
     } else {
       monto.placeholder = 'Monto a solicitar (USD)';
-      com.placeholder = 'Comisión %';
-      com.value = '8.99';
-      cuotas.value = '2';
-      hint.textContent = '💡 Ubii: el monto es en USD (BCV), se le suma la comisión % y se divide en cuotas cada 15 días.';
+      comPct.placeholder = 'Comisión %';
+      comPct.value = '8.99';
+      rowMerCuotas.style.display = 'none';
+      rowMerTasas.style.display = 'none';
+      rowMerComMora.style.display = 'none';
+      rowUbiiFecha.style.display = 'flex';
+      hint.textContent = '💡 Ubii: monto en USD (BCV) + comisión 8,99% = 2 cuotas iguales cada 15 días.';
     }
   }
 
@@ -1377,21 +1394,20 @@
   function solicitarCredito() {
     const ent = document.getElementById('solEntidad').value;
     const monto = parseFloat(document.getElementById('solMonto').value);
-    const comision = parseFloat(document.getElementById('solComision').value) || 0;
-    const nCuotas = parseInt(document.getElementById('solCuotas').value) || 1;
-    const fechaStr = document.getElementById('solFecha').value;
     if (isNaN(monto) || monto <= 0) { alert('Ingresa el monto a solicitar'); return; }
-    if (nCuotas < 1) { alert('Ingresa el número de cuotas'); return; }
-
-    const baseDate = fechaStr ? new Date(fechaStr + 'T00:00:00') : new Date();
+    
     const fmtISO = d => d.toISOString().slice(0, 10);
 
     if (ent === 'ubii') {
-      // Ubii: monto USD + comisión %, dividido en N cuotas cada 15 días
-      const totalUSD = monto * (1 + comision / 100);
-      const cuotaUSD = Math.round((totalUSD / nCuotas) * 100) / 100;
+      // Ubii: SIEMPRE 2 cuotas cada 15 días, comisión 8.99%
+      const comisionPct = parseFloat(document.getElementById('solComisionPct').value) || 8.99;
+      const fechaStr = document.getElementById('solFechaUbii').value;
+      const baseDate = fechaStr ? new Date(fechaStr + 'T00:00:00') : new Date();
+      
+      const totalUSD = monto * (1 + comisionPct / 100);
+      const cuotaUSD = Math.round((totalUSD / 2) * 100) / 100;
       const cuotas = [];
-      for (let i = 0; i < nCuotas; i++) {
+      for (let i = 0; i < 2; i++) {
         const f = new Date(baseDate); f.setDate(f.getDate() + i * 15);
         cuotas.push({ id: id(), monto: cuotaUSD, fecha: fmtISO(f), abonado: 0 });
       }
@@ -1401,27 +1417,55 @@
         data.debts.push(debt);
       }
       debt.compras.push({ id: id(), nombre: 'Crédito ' + fmtUSD(monto), cuotas });
-      alert('Crédito Ubii solicitado: ' + fmtUSD(totalUSD) + ' en ' + nCuotas + ' cuotas de ' + fmtUSD(cuotaUSD) + ' cada 15 días.');
+      alert('Crédito Ubii solicitado: ' + fmtUSD(totalUSD) + ' en 2 cuotas de ' + fmtUSD(cuotaUSD) + ' cada 15 días.');
+      
     } else {
-      // Mercantil: monto Bs + comisión flat Bs, cuotas mensuales (montos FIJOS en Bs)
+      // Mercantil: cuota FIJA con interés 5% mensual sobre saldo (sistema francés)
+      const nCuotas = parseInt(document.getElementById('solCuotas').value) || 6;
+      const tasaNom = parseFloat(document.getElementById('solTasaNom').value) || 60;
+      const comisionPct = parseFloat(document.getElementById('solComFlat').value) || 5;
+      const mora = parseFloat(document.getElementById('solMora').value) || 3;
+      const fechaStr = document.getElementById('solFecha').value;
+      const baseDate = fechaStr ? new Date(fechaStr + 'T00:00:00') : new Date();
+      
+      if (nCuotas < 1 || nCuotas > 6) { alert('Número de cuotas debe estar entre 1 y 6'); return; }
+      
       const bcv = rates.bcv_usd || 0;
-      if (bcv <= 0) { alert('Esperando la tasa BCV para calcular el equivalente en dólares...'); return; }
-      const totalBs = monto + comision;
-      const cuotaBs = Math.round((totalBs / nCuotas) * 100) / 100;
+      if (bcv <= 0) { alert('Esperando la tasa BCV...'); return; }
+      
+      // Capital inicial = monto + comisión%
+      const capitalBs = monto * (1 + comisionPct / 100);
+      // Interés mensual = tasa nominal anual / 12
+      const iMensual = (tasaNom / 100) / 12;
+      
+      // Cuota fija (sistema francés): C = P × [i(1+i)^n] / [(1+i)^n - 1]
+      let cuotaBs;
+      if (iMensual > 0 && nCuotas > 1) {
+        const factor = Math.pow(1 + iMensual, nCuotas);
+        cuotaBs = capitalBs * (iMensual * factor) / (factor - 1);
+      } else {
+        cuotaBs = capitalBs / nCuotas;
+      }
+      cuotaBs = Math.round(cuotaBs * 100) / 100;
+      
       const cuotas = [];
       for (let i = 0; i < nCuotas; i++) {
         const f = new Date(baseDate); f.setMonth(f.getMonth() + i);
-        // monto en USD (para el asistente) + montoBs FIJO (lo que realmente pagas)
+        // monto en USD (para asistente) + montoBs FIJO
         cuotas.push({ id: id(), monto: Math.round((cuotaBs / bcv) * 100) / 100, montoBs: cuotaBs, fecha: fmtISO(f), abonado: 0 });
       }
+      
       let debt = data.debts.find(d => (d.acreedor || '').toLowerCase().includes('mercantil') && isCredito(d));
       if (!debt) {
-        debt = { id: id(), acreedor: 'Mercantil Préstamo', tipo: 'credito', nota: 'Préstamo en Bs', tasa: 'bcv_usd', moneda: 'bs', payments: [], compras: [] };
+        debt = { id: id(), acreedor: 'Mercantil Préstamo', tipo: 'credito', nota: 'Préstamo en Bs', tasa: 'bcv_usd', moneda: 'bs', tasaNom: tasaNom, mora: mora, payments: [], compras: [] };
         data.debts.push(debt);
       }
       debt.compras.push({ id: id(), nombre: 'Préstamo Bs ' + monto.toLocaleString('de-DE'), cuotas });
-      alert('Préstamo Mercantil solicitado: Bs ' + totalBs.toLocaleString('de-DE') + ' en ' + nCuotas + ' cuotas mensuales de Bs ' + cuotaBs.toLocaleString('de-DE') + '.');
+      
+      const totalPagar = cuotaBs * nCuotas;
+      alert('Préstamo Mercantil:\n• Capital: Bs ' + capitalBs.toLocaleString('de-DE') + '\n• ' + nCuotas + ' cuotas mensuales FIJAS de Bs ' + cuotaBs.toLocaleString('de-DE') + '\n• Total a pagar: Bs ' + totalPagar.toLocaleString('de-DE'));
     }
+    
     document.getElementById('solMonto').value = '';
     saveData(data);
     render();
@@ -1475,27 +1519,41 @@
     render();
   }
 
-  // Abono manual a una cuota (solo registra; no toca tus bancos)
+  // Abono manual a una cuota (solo registra; no toca tus bancos).
+  // Si sobra dinero, pasa automático a la siguiente cuota (como Ubii).
   function abonarCuota(debtId, compraId, cuotaId) {
     const debt = data.debts.find(d => d.id === debtId);
     if (!debt || !isCredito(debt)) return;
     const compra = debt.compras.find(co => co.id === compraId);
     if (!compra) return;
-    const cuota = compra.cuotas.find(c => c.id === cuotaId);
-    if (!cuota) return;
-    const input = document.getElementById('cab-' + cuotaId);
-    const montoBs = parseFloat(input.value);
+    let montoBs = parseFloat(document.getElementById('cab-' + cuotaId).value);
     if (isNaN(montoBs) || montoBs <= 0) { alert('Ingresa el monto a abonar en Bs'); return; }
+    
     const tasaType = debt.tasa || 'bcv_usd';
-    const pendBs = cuotaBsPend(cuota, tasaType);
-    // Si pagas (casi) todo lo que falta, se marca la cuota como PAGADA completa
-    if (montoBs >= pendBs - 1) {
-      cuota.abonado = cuotaMonto(cuota);
-    } else {
-      const montoUsd = toUSD(montoBs, tasaType);
-      const nuevo = Math.min(cuotaMonto(cuota), cuotaAbonado(cuota) + montoUsd);
-      cuota.abonado = Math.round(nuevo * 100) / 100;
+    
+    // Busca el índice de la cuota actual en la compra
+    const idxInicio = compra.cuotas.findIndex(c => c.id === cuotaId);
+    if (idxInicio < 0) return;
+    
+    // Recorre desde esa cuota hacia adelante, abonando hasta agotar el dinero
+    for (let i = idxInicio; i < compra.cuotas.length; i++) {
+      if (montoBs <= 0.01) break;
+      const c = compra.cuotas[i];
+      const pendBs = cuotaBsPend(c, tasaType);
+      if (pendBs <= 0.01) continue; // ya está pagada, sigue
+      
+      if (montoBs >= pendBs - 1) {
+        // Paga toda esta cuota y sigue con el sobrante
+        c.abonado = cuotaMonto(c);
+        montoBs -= pendBs;
+      } else {
+        // Abona parcial y se acaba el dinero
+        const montoUsd = toUSD(montoBs, tasaType);
+        c.abonado = Math.round((cuotaAbonado(c) + montoUsd) * 100) / 100;
+        montoBs = 0;
+      }
     }
+    
     saveData(data);
     render();
   }
